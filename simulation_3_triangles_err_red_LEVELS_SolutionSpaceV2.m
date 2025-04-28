@@ -29,10 +29,10 @@ expanded_shape = [0 0; 1 0; 2 0; 3 0; 4 0];
 compressed_shape = [0 0; 0.5 1; 1 0; 1.5 1; 2 0];
 
 % ===============================================
-%% ======= PLOT 1/4: Final Shapes Grouped by Strategy
+%% ======= PLOT 1/4: Final Shapes Grouped by Strategy (Updated, Label Underneath)
 % ===============================================
 
-figure;
+figure('Name','1/4: Final Shapes Grouped by Strategy');
 hold on;
 axis equal;
 xlabel('X');
@@ -46,6 +46,9 @@ max_per_column = 8; % maximum solutions per column
 
 % Store a count for each group to place them nicely
 groupSolutionCount = zeros(1, numGroups);
+
+theta = linspace(0, 2*pi, 20); % for body circles
+radius_body = 0.05;
 
 for i = 1:length(files)
     T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
@@ -75,7 +78,10 @@ for i = 1:length(files)
             break;
         end
     end
-    if isempty(groupIdx), warning('Unknown group in file: %s', files(i).name); continue; end
+    if isempty(groupIdx)
+        warning('Unknown group in file: %s', files(i).name);
+        continue;
+    end
     color = strategyColors(groupIdx, :);
 
     % Compute offset
@@ -97,11 +103,19 @@ for i = 1:length(files)
         plot([bx(i1), bx(i2)], [by(i1), by(i2)], '-', 'Color', color, 'LineWidth', 1.5);
     end
 
-    % Plot balls
+    % Plot bodies (balls)
     for j = 1:5
         fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
             color, 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.5);
     end
+
+    % === NEW: Add EXP# Label Underneath Shape ===
+    [~, name, ~] = fileparts(files(i).name); % extract filename
+    expName = extractBefore(name, "_");      % get 'EXP#'
+    label_x = mean(bx);                      % center horizontally
+    label_y = min(by) - 0.3;                  % place slightly underneath
+    text(label_x, label_y, expName, 'FontSize', 8, 'Color', color, ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
 end
 
 % Add group names as labels
@@ -110,6 +124,7 @@ for k = 1:numGroups
     ypos = 2; % Adjust vertically if needed
     text(xpos, ypos, groupNames{k}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 12);
 end
+
 
 % ===============================================
 %% ======= PLOT 2/4: Area Dynamics Over Time
