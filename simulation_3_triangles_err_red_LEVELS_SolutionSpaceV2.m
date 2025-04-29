@@ -1,7 +1,7 @@
 clear; clc;
 
 % Folder with your Excel files
-dataFolder = 'C:\\Users\\om21104\\OneDrive - University of Bristol\\Desktop\\Project SC\\Results\\3_Modules_NAIVE\\LEVELS\\THESIS_Tests\\Solution_space_excel_files_homeo';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\Solution_spaceV2_tests\Threshold_experiments';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %% DEBUG SELFISH 
@@ -50,11 +50,49 @@ groupSolutionCount = zeros(1, numGroups);
 theta = linspace(0, 2*pi, 20); % for body circles
 radius_body = 0.05;
 
+% Loop through each file (experiment)
 for i = 1:length(files)
     T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
-    if T.success_log(end) == 0, continue; end
+    
+    % If there is no success, plot a cross instead of the shapes
+    if T.success_log(end) == 0
+        % If the solution failed, plot a cross in the same spot
+        fname = upper(files(i).name);
+        groupIdx = [];
+        for k = 1:numGroups
+            if contains(fname, strategyGroups{k})
+                groupIdx = k;
+                break;
+            end
+        end
+        if isempty(groupIdx)
+            warning('Unknown group in file: %s', files(i).name);
+            continue;
+        end
+        
+        % Compute offset
+        idx = groupSolutionCount(groupIdx);
+        dx = (groupIdx - 1) * spacing_x;
+        dy = -mod(idx, max_per_column) * spacing_y;
+        dx = dx + floor(idx / max_per_column) * (spacing_x/2); % if too many, shift right
 
-    % Final body positions
+        groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
+
+        % Plot a cross ('x') at the same position
+        label_x = dx + 1;
+        label_y = dy; % position slightly below for the label
+
+        % Plot cross to represent the missing solution
+        plot(label_x, label_y, 'x', 'MarkerSize', 8, 'LineWidth', 2, 'Color', [0.7, 0.7, 0.7]);
+
+        % Add the experiment label under the cross
+        expName = extractBefore(fname, "_"); % get 'EXP#'
+        text(label_x, label_y - 0.3, expName, 'FontSize', 8, 'Color', [0.7, 0.7, 0.7], ...
+            'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
+        continue;
+    end
+
+    % Final body positions (for successful experiments)
     bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
           T.body4_pos_x(end), T.body5_pos_x(end)];
     by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
@@ -124,7 +162,6 @@ for k = 1:numGroups
     ypos = 2; % Adjust vertically if needed
     text(xpos, ypos, groupNames{k}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 12);
 end
-
 
 % ===============================================
 %% ======= PLOT 2/4: Area Dynamics Over Time
@@ -213,166 +250,256 @@ end
 
 
 % ===============================================
-%% ======= PLOT 3/4: Global Error vs Local Frustration
+%% ======= PLOT 3/4: Global Error vs Local Frustration (Per Experiment)
 % ===============================================
 
-avgError = zeros(1, numGroups);
-stdError = zeros(1, numGroups);
-avgFrustration = zeros(1, numGroups);
-count = zeros(1, numGroups);
+% Set up color map for up to 100 experiments
+expColors = lines(100);
+
+% Track all unique experiment names
+uniqueExpNames = {};
+
+% Prepare per-experiment error and frustration values
+groupedError = cell(1, numGroups);
+groupedFrustration = cell(1, numGroups);
+groupedExpNames = cell(1, numGroups);  % Per group
+
+fprintf('\n=== DEBUG OUTPUT FOR PLOT 3/4 ===\n');
 
 for i = 1:length(files)
-    T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
-    if T.success_log(end) == 0, continue; end
-
     fname = upper(files(i).name);
+    fprintf('Processing file: %s\n', fname);
 
+    T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
+    if T.success_log(end) == 0
+        fprintf('  -> success_log(end) = 0\n');
+        fprintf('  -> Skipping (no final success)\n');
+        continue;
+    end
+
+    % Determine group
     groupIdx = [];
-    for k = 1:numGroups
-        if contains(fname, strategyGroups{k})
-            groupIdx = k;
+    for g = 1:numGroups
+        if contains(fname, upper(strategyGroups{g}))
+            groupIdx = g;
+            fprintf('  -> Matched group: %s\n', groupNames{g});
             break;
         end
     end
     if isempty(groupIdx), continue; end
 
+    % Error and frustration
     globalErr = mean(T.global_error);
-    frustration = mean((T.M1_local_frustration + T.M2_local_frustration)/2);
+    frustration = mean((T.M1_local_frustration + T.M2_local_frustration) / 2);
 
-    avgError(groupIdx) = avgError(groupIdx) + globalErr;
-    avgFrustration(groupIdx) = avgFrustration(groupIdx) + frustration;
-    stdError(groupIdx) = stdError(groupIdx) + std(T.global_error);
-    count(groupIdx) = count(groupIdx) + 1;
+    groupedError{groupIdx}(end+1) = globalErr;
+    groupedFrustration{groupIdx}(end+1) = frustration;
+
+    % Match and store experiment name
+    expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
+    if ~isempty(expMatch)
+        expName = upper(strrep(expMatch{1}{1}, '_', '')); % remove underscores
+    else
+        expName = 'Unknown';
+    end
+    groupedExpNames{groupIdx}{end+1} = expName;
+
+    % Track unique experiment names globally
+    if ~ismember(expName, uniqueExpNames)
+        uniqueExpNames{end+1} = expName;
+    end
+
+    fprintf('  -> Matched EXP name: %s\n', expName);
 end
 
-avgError = avgError ./ count;
-avgFrustration = avgFrustration ./ count;
-stdError = stdError ./ count;
+% Summary
+fprintf('\nSummary per group:\n');
+for g = 1:numGroups
+    fprintf('Strategy: %s | Num Experiments: %d\n', groupNames{g}, length(groupedError{g}));
+end
 
+% ===== Plotting
 figure;
-yyaxis left;
-b = bar(1:numGroups, avgError, 0.5);
-b.FaceColor = [0.6 0.85 1];
 hold on;
-errorbar(1:numGroups, avgError, stdError, 'k.', 'LineWidth', 1.2);
+
+numExps = length(uniqueExpNames);
+data = nan(numGroups, numExps);          % rows = groups, cols = unique exps
+frustrationPoints = nan(numGroups, numExps);
+
+% Fill matrices with data matching unique EXP names
+for g = 1:numGroups
+    for j = 1:length(groupedExpNames{g})
+        expName = groupedExpNames{g}{j};
+        expIdx = find(strcmp(uniqueExpNames, expName));
+        data(g, expIdx) = groupedError{g}(j);
+        frustrationPoints(g, expIdx) = groupedFrustration{g}(j);
+    end
+end
+
+x = 1:numGroups;
+
+% Bar plot for global error
+yyaxis left;
+bh = bar(x, data, 0.5, 'stacked', 'BarWidth', 0.5);
+for i = 1:numExps
+    bh(i).FaceColor = expColors(i, :);
+end
 ylabel('Average Global Error');
+set(gca, 'YColor', 'k');
 
+% Overlay frustration lines
 yyaxis right;
-plot(1:numGroups, avgFrustration, '-o', 'Color', [1 0.3 0.3], 'LineWidth', 2);
-ylabel('Average Local Frustration');
+set(gca, 'YColor', [0.4 0.4 0.4]);
 
+% Plot the frustration lines AFTER the bar plot
+for i = 1:numExps
+    % Plot each frustration line after bars to ensure it appears on top
+    plot(x, frustrationPoints(:, i), '-o', 'Color', expColors(i,:), ...
+         'LineWidth', 1.5, 'MarkerFaceColor', expColors(i,:), ...
+         'MarkerEdgeColor', 'k', 'MarkerSize', 6, 'LineJoin', 'round');
+end
+
+ylabel('Average Local Frustration');
 set(gca, 'XTick', 1:numGroups, 'XTickLabel', groupNames);
 xlabel('Control Strategy');
-title('3/4: Error vs Frustration');
+title('3/4: Error vs Frustration Per Experiment');
 grid on;
 
+% Legend
+legend(uniqueExpNames, 'Location', 'northeastoutside');
+
+
+% ===============================================
 %% ======= PLOT 4/4: Integrated Information (Φ)
 % ===============================================
 
-avgPhi = zeros(1, numGroups);  % Initialize arrays for average Φ
-stdPhi = zeros(1, numGroups);  % Standard deviation for error bars
-count = zeros(1, numGroups);   % Count to average Φ over the number of files
+% Set up color map and initialize
+expColors = lines(100);  % Color map for up to 100 experiments
+uniqueExpNames = {};  % List to store unique experiment names
+phiMatrix = nan(numGroups, 100);  % Rows = strategy groups, columns = experiments
 
-% Loop through each file to compute Φ for each strategy
+fprintf('\n=== DEBUG OUTPUT FOR PLOT 4/4 ===\n');
+
 for i = 1:length(files)
+    fname = upper(files(i).name);  % Get the experiment file name
+    fprintf('Processing file: %s\n', fname);
+
     T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
-    if T.success_log(end) == 0, continue; end  % Skip files with unsuccessful runs
+    if T.success_log(end) == 0
+        fprintf('  -> success_log(end) = 0\n');
+        fprintf('  -> Skipping (no final success)\n');
+        continue;
+    end
 
-    fname = upper(files(i).name);  % Extract file name to determine group
+    % Get experiment name (e.g., EXP1, EXP2)
+    expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
+    if ~isempty(expMatch)
+        expName = upper(strrep(expMatch{1}{1}, '_', ''));  % Remove underscores
+    else
+        expName = 'Unknown';
+    end
+    if ~ismember(expName, uniqueExpNames)
+        uniqueExpNames{end+1} = expName;
+    end
+    expIdx = find(strcmp(uniqueExpNames, expName));  % Get experiment index
 
-    % Determine the control strategy group based on the file name
+    % Identify the strategy group for this experiment
     groupIdx = [];
     for k = 1:numGroups
-        if contains(fname, strategyGroups{k})
+        if contains(fname, upper(strategyGroups{k}))
             groupIdx = k;
+            fprintf('  -> Matched group: %s\n', groupNames{k});
             break;
         end
     end
-    if isempty(groupIdx), continue; end  % Skip if no strategy group is found
+    if isempty(groupIdx), continue; end
 
-    % Extract relevant columns from the table for the current file
-    M1Error = T.M1_new_local_err;  % Local error for M1
-    M2Error = T.M2_new_local_err;  % Local error for M2
-    M3Error = T.global_error;    % Global error for M3 (for GLOBAL and GLOBAL_ONLY)
+    % Get the data columns
+    M1Error = T.M1_new_local_err;
+    M2Error = T.M2_new_local_err;
+    M3Error = T.global_error;
+    M1_neigh_diff = T.M1_neigh_diff;
+    M2_neigh_diff = T.M2_neigh_diff;
+    local_Wb_M1 = T.local_Wb_M1;
+    local_Wb_M2 = T.local_Wb_M2;
+    final_Wb_M1 = T.final_Wb_M1;
+    final_Wb_M2 = T.final_Wb_M2;
 
-    % Determine if M1 and M2 are behaving selfishly
-    beingSelfishM1 = T.beingSelfishM1;
-    beingSelfishM2 = T.beingSelfishM2;
+    % ====== UPDATED Φ LOGIC BASED ON STRATEGY ======
+    if groupIdx == 1  % LOCAL
+        phi = mean([temporal_mutual_information(M1Error), ...
+                    temporal_mutual_information(M2Error)]);
 
-    % Compute mutual information for LOCAL strategy (M1 and M2 errors)
-    % In LOCAL, M1 and M2 are mechanically coupled, so we calculate MI between them
-    phi1 = temporal_mutual_information(M1Error);
-    phi2 = temporal_mutual_information(M2Error);
-    phi_local = (phi1 + phi2) / 2;
+    elseif groupIdx == 2  % SELFISH
+        signal = [M1Error, M2Error];
+        if any(local_Wb_M1 > 0)
+            signal = [signal, M1_neigh_diff];
+        end
+        if any(local_Wb_M2 > 0)
+            signal = [signal, M2_neigh_diff];
+        end
+        phi = temporal_mutual_information(signal);
 
-    % For SELFISH strategy, consider errors and neighbor differences
-    M1_neigh_diff = T.M1_neigh_diff;  % Neighboring difference for M1
-    M2_neigh_diff = T.M2_neigh_diff;  % Neighboring difference for M2
+    elseif groupIdx == 3  % GLOBAL ONLY
+        phi = temporal_mutual_information(M3Error);
 
-    % Calculate mutual information for SELFISH strategy
-    if any(beingSelfishM1 == 1 | beingSelfishM2 == 1)  % If either is selfish, use LOCAL behavior
-        phi_selfish = (phi1 + phi2) / 2;  % Revert to LOCAL
-    else  % Collective behavior
-        phi_selfish = temporal_mutual_information([M1Error, M2Error, M1_neigh_diff, M2_neigh_diff]);
+    elseif groupIdx == 4  % GLOBAL
+        signal = [M1Error, M2Error, M3Error];
+        if any(final_Wb_M1 > 0)
+            signal = [signal, M1_neigh_diff];
+        end
+        if any(final_Wb_M2 > 0)
+            signal = [signal, M2_neigh_diff];
+        end
+        phi = temporal_mutual_information(signal);
     end
 
-    % For GLOBAL strategy, include M3 error
-    phi_global = temporal_mutual_information([M1Error, M2Error, M3Error]);
-
-    % For GLOBAL_ONLY strategy, only use M3 error
-    phi_global_only = temporal_mutual_information(M3Error);
-
-    % Store Φ values based on the control strategy
-    if groupIdx == 1  % LOCAL strategy
-        avgPhi(groupIdx) = avgPhi(groupIdx) + phi_local;
-        stdPhi(groupIdx) = stdPhi(groupIdx) + std([phi1, phi2]);
-    elseif groupIdx == 2  % SELFISH strategy
-        avgPhi(groupIdx) = avgPhi(groupIdx) + phi_selfish;
-        stdPhi(groupIdx) = stdPhi(groupIdx) + std([phi1, phi2]);
-    elseif groupIdx == 3  % GLOBAL strategy
-        avgPhi(groupIdx) = avgPhi(groupIdx) + phi_global;
-        stdPhi(groupIdx) = stdPhi(groupIdx) + std([phi1, phi2, phi_global]);
-    elseif groupIdx == 4  % GLOBAL_ONLY strategy
-        avgPhi(groupIdx) = avgPhi(groupIdx) + phi_global_only;
-        stdPhi(groupIdx) = stdPhi(groupIdx) + std(phi_global_only);
-    end
-    count(groupIdx) = count(groupIdx) + 1;  % Increment the count for averaging
+    % Store Φ in the phiMatrix
+    phiMatrix(groupIdx, expIdx) = phi;
+    fprintf('  -> Stored Φ = %.4f in group %d, EXP = %s (column %d)\n', ...
+        phi, groupIdx, expName, expIdx);
 end
 
-% Average the results
-avgPhi = avgPhi ./ count;
-stdPhi = stdPhi ./ count;
+% Trim unused experiment columns
+numExps = length(uniqueExpNames);
+phiMatrix = phiMatrix(:, 1:numExps);
 
-% Plot the integrated information (Φ) for each strategy
+% ===== Plotting
 figure;
-barHandle = bar(1:numGroups, avgPhi, 0.5);
 hold on;
-errorbar(1:numGroups, avgPhi, stdPhi, 'k.', 'LineWidth', 1.2);
-set(barHandle, 'FaceColor', [0.7 0.9 0.4]);  % Set bar color
-set(gca, 'XTick', 1:numGroups, 'XTickLabel', groupNames);  % Set strategy names
-ylabel('Average Integrated Information (Φ)');
+
+x = 1:numGroups;  % x-axis positions for groups
+bh = bar(x, phiMatrix, 0.5, 'stacked');  % Create a stacked bar chart
+for i = 1:numExps
+    bh(i).FaceColor = expColors(i, :);  % Assign color for each experiment
+end
+
+ylabel('Integrated Information (Φ)');
+set(gca, 'XTick', 1:numGroups, 'XTickLabel', groupNames);  % Label the x-axis with group names
 xlabel('Control Strategy');
 title('4/4: Integrated Information (Φ)');
 grid on;
 
+% Add the legend with experiment names
+legend(uniqueExpNames, 'Location', 'northeastoutside');
 
 % ===============================================
 %% Helper Function
 % ===============================================
 function phi = temporal_mutual_information(signal)
-    signal = signal(~isnan(signal));
-    if numel(signal) < 2
+    signal = signal(~any(isnan(signal), 2), :); % remove NaNs
+    if size(signal, 1) < 2
         phi = NaN;
         return;
     end
-    signal = (signal - mean(signal)) / std(signal);
-    x_t = signal(1:end-1);
-    x_t1 = signal(2:end);
-    r = corr(x_t, x_t1);
-
-    if abs(r) < 1
-        phi = -0.5 * log(1 - r^2);
-    else
+    signal = (signal - mean(signal)) ./ std(signal); % z-score each column
+    x_t = signal(1:end-1, :);
+    x_t1 = signal(2:end, :);
+    R = corr(x_t, x_t1, 'rows', 'complete');
+    if any(isnan(R(:))) || abs(det(R)) >= 1
         phi = 0;
+    else
+        phi = -0.5 * log(det(eye(size(R)) - R^2));
     end
 end
+
