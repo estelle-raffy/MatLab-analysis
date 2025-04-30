@@ -1,7 +1,7 @@
 clear; clc;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\Solution_spaceV2_tests\Threshold_experiments';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\Solution_space_excel_files_homeo';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %% DEBUG SELFISH 
@@ -483,23 +483,46 @@ grid on;
 % Add the legend with experiment names
 legend(uniqueExpNames, 'Location', 'northeastoutside');
 
-% ===============================================
-%% Helper Function
-% ===============================================
 function phi = temporal_mutual_information(signal)
-    signal = signal(~any(isnan(signal), 2), :); % remove NaNs
+    % Remove rows with any NaNs
+    signal = signal(~any(isnan(signal), 2), :);
+
+    % Not enough data
     if size(signal, 1) < 2
         phi = NaN;
         return;
     end
-    signal = (signal - mean(signal)) ./ std(signal); % z-score each column
+
+    % Z-score normalization
+    signal = (signal - mean(signal)) ./ std(signal);
+
+    % Create time-lagged vectors
     x_t = signal(1:end-1, :);
     x_t1 = signal(2:end, :);
+
+    % Correlation matrix
     R = corr(x_t, x_t1, 'rows', 'complete');
-    if any(isnan(R(:))) || abs(det(R)) >= 1
+
+    % Check if correlation matrix is valid
+    if any(isnan(R(:)))
+        phi = 0;
+        return;
+    end
+
+    % ✅ Correct: elementwise square
+    R_squared = R .* R;
+
+    % I - R^2
+    I_minus_R2 = eye(size(R)) - R_squared;
+
+    % Compute determinant safely
+    detVal = det(I_minus_R2);
+
+    if detVal <= 0 || ~isfinite(detVal)
         phi = 0;
     else
-        phi = -0.5 * log(det(eye(size(R)) - R^2));
+        phi = 0.5 * log(1 / detVal);
     end
 end
+
 
