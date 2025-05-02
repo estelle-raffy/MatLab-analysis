@@ -21,7 +21,7 @@ sampling_rate = 10;
 %% Create Figure
 figure; hold on;
 history_bodies = cell(1, 5);
-gif_filename = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\my_animation.gif';
+gif_filename = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_LOCAL\my_animation.gif';
 
 indices = 1:sampling_rate:length(time);
 last_index = indices(end);
@@ -89,9 +89,22 @@ for idx = 1:length(indices)
         end
     end
 
+    % Add Obstacle (replacing the rectangle function)
+    % Define the size of the obstacle (same as your Python code)
+    obstacle_size = 40;
+    half_size = obstacle_size / 2;
+
+    % Create a square-like obstacle with 'fill' instead of 'rectangle'
+    x_obstacle = [obstacle_x(i) - half_size, obstacle_x(i) + half_size, obstacle_x(i) + half_size, obstacle_x(i) - half_size];
+    y_obstacle = [obstacle_y(i) - half_size, obstacle_y(i) - half_size, obstacle_y(i) + half_size, obstacle_y(i) + half_size];
+
+    % Fill the obstacle with semi-transparency
+    fill(x_obstacle, y_obstacle, 'm', 'FaceAlpha', 0.4, 'EdgeColor', 'm');
+
+
     % Plot Formatting
     xlim([-300 300]); ylim([0 300]); axis equal;
-    title('EXP5 GLOBAL Wa0.33 Wb3 Wc0.33 WnM1 1 WnM2 -1 M1M2 M2M3 Demand400 Target500-450 Thresh45 T60', ...
+    title('EXP4 LOCAL Wa1 Wb0 Wc0 WnM1 1 WnM2 -1 M1M2 M2M3 Demand400 Target500-550 Thresh45 T60', ...
           sprintf('System Configuration at t = %.1f sec', time(i)));
 
     % Legend
