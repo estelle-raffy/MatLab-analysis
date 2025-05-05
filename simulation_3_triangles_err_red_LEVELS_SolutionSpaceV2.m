@@ -1,7 +1,7 @@
 clear; clc;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\Solution_space_excel_files_homeo';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_HOMEO';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %% DEBUG SELFISH 
@@ -13,8 +13,8 @@ for i = 1:length(files)
 end
 
 % Define strategy groups
-strategyGroups = {'LOCAL', 'SELFISH', 'GLOBAL_ONLY', 'GLOBAL'};
-groupNames = {'Local', 'Neigh/Selfish', 'Global Only', 'Global'};
+strategyGroups = {'LOCAL', 'NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL'};
+groupNames = {'Local', 'Neighbour', 'Selfish', 'Global Only', 'Global'};
 numGroups = numel(strategyGroups);
 strategyColors = lines(numGroups);
 
@@ -50,14 +50,33 @@ groupSolutionCount = zeros(1, numGroups);
 theta = linspace(0, 2*pi, 20); % for body circles
 radius_body = 0.05;
 
+% Set up consistent experiment colors (same as Plot 3/4)
+expColors = lines(100);
+uniqueExpNames = {}; % to track and index experiment names
+
 % Loop through each file (experiment)
 for i = 1:length(files)
     T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
     
+    fname = upper(files(i).name);
+
+    % Match and extract experiment name (e.g., EXP1)
+    expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
+    if ~isempty(expMatch)
+        expName = upper(strrep(expMatch{1}{1}, '_', '')); % remove underscore
+    else
+        expName = 'Unknown';
+    end
+
+    % Get experiment color
+    if ~ismember(expName, uniqueExpNames)
+        uniqueExpNames{end+1} = expName;
+    end
+    expIdx = find(strcmp(uniqueExpNames, expName));
+    color = expColors(expIdx, :);
+
     % If there is no success, plot a cross instead of the shapes
     if T.success_log(end) == 0
-        % If the solution failed, plot a cross in the same spot
-        fname = upper(files(i).name);
         groupIdx = [];
         for k = 1:numGroups
             if contains(fname, strategyGroups{k})
@@ -74,19 +93,17 @@ for i = 1:length(files)
         idx = groupSolutionCount(groupIdx);
         dx = (groupIdx - 1) * spacing_x;
         dy = -mod(idx, max_per_column) * spacing_y;
-        dx = dx + floor(idx / max_per_column) * (spacing_x/2); % if too many, shift right
+        dx = dx + floor(idx / max_per_column) * (spacing_x/2);
 
         groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
 
-        % Plot a cross ('x') at the same position
+        % Plot a cross
         label_x = dx + 1;
-        label_y = dy; % position slightly below for the label
+        label_y = dy;
 
-        % Plot cross to represent the missing solution
         plot(label_x, label_y, 'x', 'MarkerSize', 8, 'LineWidth', 2, 'Color', [0.7, 0.7, 0.7]);
 
-        % Add the experiment label under the cross
-        expName = extractBefore(fname, "_"); % get 'EXP#'
+        % Add experiment label
         text(label_x, label_y - 0.3, expName, 'FontSize', 8, 'Color', [0.7, 0.7, 0.7], ...
             'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
         continue;
@@ -101,14 +118,12 @@ for i = 1:length(files)
     % Normalization
     bx = bx - bx(1);
     by = by - by(1);
-
     bx = bx - min(bx);
-    bx = bx / max(bx) * 2; % normalized width
+    bx = bx / max(bx) * 2;
     by = by - min(by);
-    by = by / max(by) * 1; % normalized height
+    by = by / max(by) * 1;
 
     % Determine group
-    fname = upper(files(i).name);
     groupIdx = [];
     for k = 1:numGroups
         if contains(fname, strategyGroups{k})
@@ -120,13 +135,12 @@ for i = 1:length(files)
         warning('Unknown group in file: %s', files(i).name);
         continue;
     end
-    color = strategyColors(groupIdx, :);
 
     % Compute offset
     idx = groupSolutionCount(groupIdx);
     dx = (groupIdx - 1) * spacing_x;
     dy = -mod(idx, max_per_column) * spacing_y;
-    dx = dx + floor(idx / max_per_column) * (spacing_x/2); % if too many, shift right
+    dx = dx + floor(idx / max_per_column) * (spacing_x/2);
 
     groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
 
@@ -148,10 +162,8 @@ for i = 1:length(files)
     end
 
     % === NEW: Add EXP# Label Underneath Shape ===
-    [~, name, ~] = fileparts(files(i).name); % extract filename
-    expName = extractBefore(name, "_");      % get 'EXP#'
-    label_x = mean(bx);                      % center horizontally
-    label_y = min(by) - 0.3;                  % place slightly underneath
+    label_x = mean(bx);
+    label_y = min(by) - 0.3;
     text(label_x, label_y, expName, 'FontSize', 8, 'Color', color, ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
 end
@@ -159,7 +171,7 @@ end
 % Add group names as labels
 for k = 1:numGroups
     xpos = (k-1) * spacing_x + 1;
-    ypos = 2; % Adjust vertically if needed
+    ypos = 2;
     text(xpos, ypos, groupNames{k}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 12);
 end
 
@@ -171,7 +183,7 @@ figure('Name','2/4: Module Dynamics Over Time');
 sgtitle('2/4: Evolution of Module Areas for Each Strategy');
 
 for g = 1:numGroups
-    subplot(2,2,g);
+    subplot(3,2,g);
     hold on; grid on;
     title(groupNames{g});
     xlabel('Time');
@@ -353,8 +365,8 @@ set(gca, 'YColor', [0.4 0.4 0.4]);
 
 % Plot the frustration lines AFTER the bar plot
 for i = 1:numExps
-    % Plot each frustration line after bars to ensure it appears on top
-    plot(x, frustrationPoints(:, i), '-o', 'Color', expColors(i,:), ...
+    % Plot each frustration dots after bars 
+    plot(x, frustrationPoints(:, i), 'o', 'Color', expColors(i,:), ...
          'LineWidth', 1.5, 'MarkerFaceColor', expColors(i,:), ...
          'MarkerEdgeColor', 'k', 'MarkerSize', 6, 'LineJoin', 'round');
 end
@@ -429,8 +441,10 @@ for i = 1:length(files)
     if groupIdx == 1  % LOCAL
         phi = mean([temporal_mutual_information(M1Error), ...
                     temporal_mutual_information(M2Error)]);
-
-    elseif groupIdx == 2  % SELFISH
+    elseif groupIdx == 2  % NEIGHBOUR
+        signal = [M1Error, M2Error, M1_neigh_diff, M2_neigh_diff];
+        phi = temporal_mutual_information(signal);
+    elseif groupIdx == 3  % SELFISH
         signal = [M1Error, M2Error];
         if any(local_Wb_M1 > 0)
             signal = [signal, M1_neigh_diff];
@@ -440,10 +454,10 @@ for i = 1:length(files)
         end
         phi = temporal_mutual_information(signal);
 
-    elseif groupIdx == 3  % GLOBAL ONLY
+    elseif groupIdx == 4  % GLOBAL ONLY
         phi = temporal_mutual_information(M3Error);
 
-    elseif groupIdx == 4  % GLOBAL
+    elseif groupIdx == 5  % GLOBAL
         signal = [M1Error, M2Error, M3Error];
         if any(final_Wb_M1 > 0)
             signal = [signal, M1_neigh_diff];
