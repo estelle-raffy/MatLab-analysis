@@ -1,8 +1,9 @@
 clear; clc;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_HOMEO';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
 files = dir(fullfile(dataFolder, '*.xlsx'));
+
 
 %% DEBUG SELFISH 
 disp('Checking filenames for SELFISH...');
@@ -12,9 +13,16 @@ for i = 1:length(files)
     end
 end
 
+disp('Checking filenames for HOMEO...');
+for i = 1:length(files)
+    if contains(upper(files(i).name), 'HOMEO')
+        disp(['Found HOMEO file: ', files(i).name]);
+    end
+end
+
 % Define strategy groups
-strategyGroups = {'LOCAL', 'NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL'};
-groupNames = {'Local', 'Neighbour', 'Selfish', 'Global Only', 'Global'};
+strategyGroups = {'LOCAL', 'NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL', 'HOMEO'};
+groupNames = {'Local', 'Neighbour', 'Selfish', 'M3 only', 'Global Mod', 'Homeo'};
 numGroups = numel(strategyGroups);
 strategyColors = lines(numGroups);
 
@@ -31,7 +39,6 @@ compressed_shape = [0 0; 0.5 1; 1 0; 1.5 1; 2 0];
 % ===============================================
 %% ======= PLOT 1/4: Final Shapes Grouped by Strategy (Updated, Label Underneath)
 % ===============================================
-
 figure('Name','1/4: Final Shapes Grouped by Strategy');
 hold on;
 axis equal;
@@ -39,21 +46,16 @@ xlabel('X');
 ylabel('Y');
 title('1/4: Diversity of Solutions by Strategy');
 grid on;
-
 spacing_x = 5; % horizontal spacing between groups
 spacing_y = 3; % vertical spacing between solutions in a group
 max_per_column = 8; % maximum solutions per column
-
 % Store a count for each group to place them nicely
 groupSolutionCount = zeros(1, numGroups);
-
 theta = linspace(0, 2*pi, 20); % for body circles
 radius_body = 0.05;
-
 % Set up consistent experiment colors (same as Plot 3/4)
 expColors = lines(100);
 uniqueExpNames = {}; % to track and index experiment names
-
 % Loop through each file (experiment)
 for i = 1:length(files)
     T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
@@ -67,14 +69,12 @@ for i = 1:length(files)
     else
         expName = 'Unknown';
     end
-
     % Get experiment color
     if ~ismember(expName, uniqueExpNames)
         uniqueExpNames{end+1} = expName;
     end
     expIdx = find(strcmp(uniqueExpNames, expName));
     color = expColors(expIdx, :);
-
     % If there is no success, plot a cross instead of the shapes
     if T.success_log(end) == 0
         groupIdx = [];
@@ -94,27 +94,21 @@ for i = 1:length(files)
         dx = (groupIdx - 1) * spacing_x;
         dy = -mod(idx, max_per_column) * spacing_y;
         dx = dx + floor(idx / max_per_column) * (spacing_x/2);
-
         groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
-
         % Plot a cross
         label_x = dx + 1;
         label_y = dy;
-
         plot(label_x, label_y, 'x', 'MarkerSize', 8, 'LineWidth', 2, 'Color', [0.7, 0.7, 0.7]);
-
         % Add experiment label
         text(label_x, label_y - 0.3, expName, 'FontSize', 8, 'Color', [0.7, 0.7, 0.7], ...
             'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
         continue;
     end
-
     % Final body positions (for successful experiments)
     bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
           T.body4_pos_x(end), T.body5_pos_x(end)];
     by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
           T.body4_pos_y(end), T.body5_pos_y(end)];
-
     % Normalization
     bx = bx - bx(1);
     by = by - by(1);
@@ -122,7 +116,6 @@ for i = 1:length(files)
     bx = bx / max(bx) * 2;
     by = by - min(by);
     by = by / max(by) * 1;
-
     % Determine group
     groupIdx = [];
     for k = 1:numGroups
@@ -135,45 +128,41 @@ for i = 1:length(files)
         warning('Unknown group in file: %s', files(i).name);
         continue;
     end
-
     % Compute offset
     idx = groupSolutionCount(groupIdx);
     dx = (groupIdx - 1) * spacing_x;
     dy = -mod(idx, max_per_column) * spacing_y;
     dx = dx + floor(idx / max_per_column) * (spacing_x/2);
-
     groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
-
     % Apply offset
     bx = bx + dx;
     by = by + dy;
-
     % Plot springs
     for j = 1:size(spring_pairs, 1)
         i1 = spring_pairs(j,1);
         i2 = spring_pairs(j,2);
         plot([bx(i1), bx(i2)], [by(i1), by(i2)], '-', 'Color', color, 'LineWidth', 1.5);
     end
-
     % Plot bodies (balls)
     for j = 1:5
         fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
             color, 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.5);
     end
-
     % === NEW: Add EXP# Label Underneath Shape ===
     label_x = mean(bx);
     label_y = min(by) - 0.3;
     text(label_x, label_y, expName, 'FontSize', 8, 'Color', color, ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
 end
-
 % Add group names as labels
 for k = 1:numGroups
     xpos = (k-1) * spacing_x + 1;
     ypos = 2;
     text(xpos, ypos, groupNames{k}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 12);
 end
+% === Ensure everything fits in the figure ===
+xlim([-1, numGroups * spacing_x]);
+ylim([-max_per_column * spacing_y - 1, 3]);
 
 % ===============================================
 %% ======= PLOT 2/4: Area Dynamics Over Time
@@ -183,7 +172,7 @@ figure('Name','2/4: Module Dynamics Over Time');
 sgtitle('2/4: Evolution of Module Areas for Each Strategy');
 
 for g = 1:numGroups
-    subplot(3,2,g);
+    subplot(3,3,g);
     hold on; grid on;
     title(groupNames{g});
     xlabel('Time');
@@ -384,25 +373,20 @@ legend(uniqueExpNames, 'Location', 'northeastoutside');
 % ===============================================
 %% ======= PLOT 4/4: Integrated Information (Φ)
 % ===============================================
-
 % Set up color map and initialize
 expColors = lines(100);  % Color map for up to 100 experiments
 uniqueExpNames = {};  % List to store unique experiment names
 phiMatrix = nan(numGroups, 100);  % Rows = strategy groups, columns = experiments
-
 fprintf('\n=== DEBUG OUTPUT FOR PLOT 4/4 ===\n');
-
 for i = 1:length(files)
     fname = upper(files(i).name);  % Get the experiment file name
     fprintf('Processing file: %s\n', fname);
-
     T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
     if T.success_log(end) == 0
         fprintf('  -> success_log(end) = 0\n');
         fprintf('  -> Skipping (no final success)\n');
         continue;
     end
-
     % Get experiment name (e.g., EXP1, EXP2)
     expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
     if ~isempty(expMatch)
@@ -414,7 +398,6 @@ for i = 1:length(files)
         uniqueExpNames{end+1} = expName;
     end
     expIdx = find(strcmp(uniqueExpNames, expName));  % Get experiment index
-
     % Identify the strategy group for this experiment
     groupIdx = [];
     for k = 1:numGroups
@@ -425,7 +408,6 @@ for i = 1:length(files)
         end
     end
     if isempty(groupIdx), continue; end
-
     % Get the data columns
     M1Error = T.M1_new_local_err;
     M2Error = T.M2_new_local_err;
@@ -436,16 +418,15 @@ for i = 1:length(files)
     local_Wb_M2 = T.local_Wb_M2;
     final_Wb_M1 = T.final_Wb_M1;
     final_Wb_M2 = T.final_Wb_M2;
-
     % ====== UPDATED Φ LOGIC BASED ON STRATEGY ======
-    if groupIdx == 1  % LOCAL
-        phi = mean([temporal_mutual_information(M1Error), ...
-                    temporal_mutual_information(M2Error)]);
+    if groupIdx == 1  % LOCAL (M1, M2, M3)
+        signal = [M1Error, M2Error, M3Error];
+        phi = temporal_mutual_information(signal);
     elseif groupIdx == 2  % NEIGHBOUR
-        signal = [M1Error, M2Error, M1_neigh_diff, M2_neigh_diff];
+        signal = [M1Error, M2Error, M1_neigh_diff, M2_neigh_diff, M3Error];
         phi = temporal_mutual_information(signal);
     elseif groupIdx == 3  % SELFISH
-        signal = [M1Error, M2Error];
+        signal = [M1Error, M2Error, M3Error];
         if any(local_Wb_M1 > 0)
             signal = [signal, M1_neigh_diff];
         end
@@ -453,10 +434,8 @@ for i = 1:length(files)
             signal = [signal, M2_neigh_diff];
         end
         phi = temporal_mutual_information(signal);
-
     elseif groupIdx == 4  % GLOBAL ONLY
         phi = temporal_mutual_information(M3Error);
-
     elseif groupIdx == 5  % GLOBAL
         signal = [M1Error, M2Error, M3Error];
         if any(final_Wb_M1 > 0)
@@ -466,72 +445,65 @@ for i = 1:length(files)
             signal = [signal, M2_neigh_diff];
         end
         phi = temporal_mutual_information(signal);
+      elseif groupIdx == 6  % HOMEO
+        signal = [M1Error, M2Error, M3Error];
+        if any(final_Wb_M1 > 0)
+            signal = [signal, M1_neigh_diff];
+        end
+        if any(final_Wb_M2 > 0)
+            signal = [signal, M2_neigh_diff];
+        end
+        phi = temporal_mutual_information(signal);
     end
-
     % Store Φ in the phiMatrix
     phiMatrix(groupIdx, expIdx) = phi;
     fprintf('  -> Stored Φ = %.4f in group %d, EXP = %s (column %d)\n', ...
         phi, groupIdx, expName, expIdx);
 end
-
 % Trim unused experiment columns
 numExps = length(uniqueExpNames);
 phiMatrix = phiMatrix(:, 1:numExps);
-
 % ===== Plotting
 figure;
 hold on;
-
 x = 1:numGroups;  % x-axis positions for groups
 bh = bar(x, phiMatrix, 0.5, 'stacked');  % Create a stacked bar chart
 for i = 1:numExps
     bh(i).FaceColor = expColors(i, :);  % Assign color for each experiment
 end
-
 ylabel('Integrated Information (Φ)');
 set(gca, 'XTick', 1:numGroups, 'XTickLabel', groupNames);  % Label the x-axis with group names
 xlabel('Control Strategy');
 title('4/4: Integrated Information (Φ)');
 grid on;
-
 % Add the legend with experiment names
 legend(uniqueExpNames, 'Location', 'northeastoutside');
-
 function phi = temporal_mutual_information(signal)
     % Remove rows with any NaNs
     signal = signal(~any(isnan(signal), 2), :);
-
     % Not enough data
     if size(signal, 1) < 2
         phi = NaN;
         return;
     end
-
     % Z-score normalization
     signal = (signal - mean(signal)) ./ std(signal);
-
     % Create time-lagged vectors
     x_t = signal(1:end-1, :);
     x_t1 = signal(2:end, :);
-
     % Correlation matrix
     R = corr(x_t, x_t1, 'rows', 'complete');
-
     % Check if correlation matrix is valid
     if any(isnan(R(:)))
         phi = 0;
         return;
     end
-
     % ✅ Correct: elementwise square
     R_squared = R .* R;
-
     % I - R^2
     I_minus_R2 = eye(size(R)) - R_squared;
-
     % Compute determinant safely
     detVal = det(I_minus_R2);
-
     if detVal <= 0 || ~isfinite(detVal)
         phi = 0;
     else
