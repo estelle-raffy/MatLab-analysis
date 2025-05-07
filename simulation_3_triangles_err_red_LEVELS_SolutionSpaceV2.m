@@ -166,7 +166,7 @@ ylim([-max_per_column * spacing_y - 1, 3]);
 
 
 % ===============================================
-%% ======= PLOT 2/4: Time Efficiency Grouped by Strategy
+%% ======= PLOT 2/5: Time Efficiency of Successful Solutions
 % ===============================================
 figure('Name','2/4: Time Efficiency of Successful Solutions');
 hold on;
@@ -178,9 +178,9 @@ grid on;
 % Initialize storage per group
 groupSuccessTimes = cell(1, numGroups);
 groupExpNames = cell(1, numGroups);
-groupExpColors = cell(1, numGroups); % NEW: Store colors per experiment
+groupExpColors = cell(1, numGroups); % Store colors per experiment
 
-% Prepare color mapping
+% Prepare color mapping (same as Plot 1/4)
 expColors = lines(100);
 uniqueExpNames = {}; % make sure this matches Plot 1/4
 
@@ -243,7 +243,10 @@ groupSpacing = 5;
 barWidth = 0.5;
 x_ticks = [];
 x_labels = {};
-x_counter = 0;
+
+legendEntries = {};      % For legend text
+legendColors = [];       % For corresponding colors
+plottedExps = {};        % To avoid duplicates in legend
 
 for k = 1:numGroups
     times = groupSuccessTimes{k};
@@ -253,9 +256,17 @@ for k = 1:numGroups
 
     for j = 1:n
         x = (k - 1) * groupSpacing + j;
-        bar(x, times(j), barWidth, 'FaceColor', colors(j,:), 'EdgeColor', 'k');
-        text(x, times(j) + 1, labels{j}, ...
-            'Rotation', 90, 'HorizontalAlignment', 'left', 'FontSize', 8);
+
+        % Plot bar
+        b = bar(x, times(j), barWidth, 'FaceColor', colors(j,:), 'EdgeColor', 'k');
+
+        % Add to legend if not already included
+        expName = labels{j};
+        if ~ismember(expName, plottedExps)
+            legendEntries{end+1} = expName;
+            legendColors(end+1, :) = colors(j,:);
+            plottedExps{end+1} = expName;
+        end
     end
 
     % For group label under the bars
@@ -266,16 +277,23 @@ end
 
 xticks(x_ticks);
 xticklabels(x_labels);
-ylim([0, 65]); % assume t goes to ~60s
+ylim([0, 65]); % Assuming max t = ~60s
 xlim([0, x_ticks(end) + groupSpacing]);
 
+% Add legend using invisible bars
+hold on;
+for i = 1:numel(legendEntries)
+    hLegend(i) = bar(nan, nan, 'FaceColor', legendColors(i,:), 'EdgeColor', 'k');
+end
+legend(hLegend, legendEntries, 'Location', 'eastoutside');
+
 
 % ===============================================
-%% ======= PLOT 3/5: Area Dynamics Over Time
+%% ======= PLOT 3/5: Area Dynamics Over Time (With M3 Dominance)
 % ===============================================
 
-figure('Name','2/4: Module Dynamics Over Time');
-sgtitle('2/4: Evolution of Module Areas for Each Strategy');
+figure('Name','3/5: Module Dynamics Over Time');
+sgtitle('3/5: Evolution of Module Areas for Each Strategy');
 
 for g = 1:numGroups
     subplot(3,3,g);
@@ -284,76 +302,68 @@ for g = 1:numGroups
     xlabel('Time');
     ylabel('Area Size');
 
-    cmap = lines(2); % colors: blue for M1, orange for M2
+    cmap = lines(3); % blue, orange, yellow for M1, M2, M3
 
-    hM1 = []; % handle for M1 dominant curves
-    hM2 = []; % handle for M2 dominant curves
+    hM1 = []; hM2 = []; hM3 = []; % handles for legend
 
     for i = 1:length(files)
         T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
-        
-        % DEBUG: Check SELFISH success
-        fname = upper(files(i).name);
-        if contains(fname, 'SELFISH')
-            disp(['SELFISH file: ', files(i).name, ' | success_log(end) = ', num2str(T.success_log(end))]);
-        end
 
+        fname = upper(files(i).name);
         if T.success_log(end) == 0, continue; end
-
-        fname = upper(files(i).name);
-        match = contains(fname, strategyGroups{g});
-        if ~match, continue; end
+        if ~contains(fname, strategyGroups{g}), continue; end
 
         A1 = T.area_M1;
         A2 = T.area_M2;
 
+        % Get actuation magnitudes
         a1 = abs(T.M1_actuation_final(end));
         a2 = abs(T.M2_actuation_final(end));
-        [~, dominantIdx] = max([a1, a2]);
+        a3 = abs(T.M3_actuation_final(end)); % NEW for M3
+
+        % Determine dominant module
+        [~, dominantIdx] = max([a1, a2, a3]);
         color = cmap(dominantIdx, :);
 
-        t = 1:length(A1);
-        
-        % Plot curves and store the handle for legend
-        if dominantIdx == 1
-            h = plot(t, A1, '-', 'Color', color, 'LineWidth', 1);
-            plot(t, A2, '-', 'Color', color, 'LineWidth', 1);
-            if isempty(hM1)
-                hM1 = h; % Save first M1 dominant curve for legend
-            end
-        else
-            h = plot(t, A1, '-', 'Color', color, 'LineWidth', 1);
-            plot(t, A2, '-', 'Color', color, 'LineWidth', 1);
-            if isempty(hM2)
-                hM2 = h; % Save first M2 dominant curve for legend
-            end
+        t = 1:length(A1); % assuming A1 and A2 same length
+
+        % Plot both area curves, color by dominant
+        h = plot(t, A1, '-', 'Color', color, 'LineWidth', 1);
+        plot(t, A2, '-', 'Color', color, 'LineWidth', 1);
+
+        % Save handle for legend
+        switch dominantIdx
+            case 1
+                if isempty(hM1), hM1 = h; end
+            case 2
+                if isempty(hM2), hM2 = h; end
+            case 3
+                if isempty(hM3), hM3 = h; end
         end
     end
 
-    % === NEW: Proper Legend with Correct Color Handles ===
-    if ~isempty(hM1) && ~isempty(hM2)
-        legend([hM1, hM2], {'M1 Dominant', 'M2 Dominant'}, 'Location', 'best');
-    elseif ~isempty(hM1)
-        legend(hM1, {'M1 Dominant'}, 'Location', 'best');
-    elseif ~isempty(hM2)
-        legend(hM2, {'M2 Dominant'}, 'Location', 'best');
+    % Add legend based on which handles were used
+    legendEntries = {};
+    legendHandles = [];
+
+    if ~isempty(hM1)
+        legendEntries{end+1} = 'M1 Dominant';
+        legendHandles(end+1) = hM1;
+    end
+    if ~isempty(hM2)
+        legendEntries{end+1} = 'M2 Dominant';
+        legendHandles(end+1) = hM2;
+    end
+    if ~isempty(hM3)
+        legendEntries{end+1} = 'M3 Dominant';
+        legendHandles(end+1) = hM3;
+    end
+
+    if ~isempty(legendHandles)
+        legend(legendHandles, legendEntries, 'Location', 'best');
     end
 end
 
-% ===================================================
-% === FUTURE: If you want to include M3 as dominant ===
-% Uncomment this block and comment the old one above
-%
-% cmap = lines(3); % colors for M1, M2, M3
-% a1 = abs(T.M1_actuation_final(end));
-% a2 = abs(T.M2_actuation_final(end));
-% a3 = abs(T.M3_actuation_final(end)); % NEW
-% [~, dominantIdx] = max([a1, a2, a3]);
-% color = cmap(dominantIdx, :);
-%
-% Handle separately for hM1, hM2, hM3 and adjust legend
-%
-% ===================================================
 
 
 % ===============================================
