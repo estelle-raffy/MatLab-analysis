@@ -37,7 +37,7 @@ expanded_shape = [0 0; 1 0; 2 0; 3 0; 4 0];
 compressed_shape = [0 0; 0.5 1; 1 0; 1.5 1; 2 0];
 
 % ===============================================
-%% ======= PLOT 1/4: Final Shapes Grouped by Strategy (Updated, Label Underneath)
+%% ======= PLOT 1/5: Final Shapes Grouped by Strategy (Updated, Label Underneath)
 % ===============================================
 figure('Name','1/4: Final Shapes Grouped by Strategy');
 hold on;
@@ -164,8 +164,114 @@ end
 xlim([-1, numGroups * spacing_x]);
 ylim([-max_per_column * spacing_y - 1, 3]);
 
+
 % ===============================================
-%% ======= PLOT 2/4: Area Dynamics Over Time
+%% ======= PLOT 2/4: Time Efficiency Grouped by Strategy
+% ===============================================
+figure('Name','2/4: Time Efficiency of Successful Solutions');
+hold on;
+title('2/4: Time to Achieve Stable Success (Grouped by Strategy)');
+ylabel('Time of Final Success Onset (s)');
+xlabel('Strategy Group');
+grid on;
+
+% Initialize storage per group
+groupSuccessTimes = cell(1, numGroups);
+groupExpNames = cell(1, numGroups);
+groupExpColors = cell(1, numGroups); % NEW: Store colors per experiment
+
+% Prepare color mapping
+expColors = lines(100);
+uniqueExpNames = {}; % make sure this matches Plot 1/4
+
+% Loop through all files again
+for i = 1:length(files)
+    T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
+    fname = upper(files(i).name);
+
+    % Match experiment name
+    expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
+    if ~isempty(expMatch)
+        expName = upper(strrep(expMatch{1}{1}, '_', ''));
+    else
+        expName = sprintf('File%d', i);
+    end
+
+    % Get experiment color (same method as Plot 1/4)
+    if ~ismember(expName, uniqueExpNames)
+        uniqueExpNames{end+1} = expName;
+    end
+    expIdx = find(strcmp(uniqueExpNames, expName));
+    color = expColors(expIdx, :);
+
+    % Match strategy group
+    groupIdx = [];
+    for k = 1:numGroups
+        if contains(fname, strategyGroups{k})
+            groupIdx = k;
+            break;
+        end
+    end
+    if isempty(groupIdx)
+        warning('Unknown group in file: %s', files(i).name);
+        continue;
+    end
+
+    % Only analyze successful runs
+    if T.success_log(end) == 1
+        s_log = T.success_log;
+        t = T.current_time;
+
+        % Find start of final continuous success period
+        idx_end = length(s_log);
+        idx_start = idx_end;
+        while idx_start > 1 && s_log(idx_start - 1) == 1
+            idx_start = idx_start - 1;
+        end
+
+        onset_time = t(idx_start);
+
+        % Store info for this experiment
+        groupSuccessTimes{groupIdx}(end+1) = onset_time;
+        groupExpNames{groupIdx}{end+1} = expName;
+        groupExpColors{groupIdx}(end+1, :) = color;
+    end
+end
+
+% Plot grouped bar chart
+groupSpacing = 5;
+barWidth = 0.5;
+x_ticks = [];
+x_labels = {};
+x_counter = 0;
+
+for k = 1:numGroups
+    times = groupSuccessTimes{k};
+    labels = groupExpNames{k};
+    colors = groupExpColors{k};
+    n = numel(times);
+
+    for j = 1:n
+        x = (k - 1) * groupSpacing + j;
+        bar(x, times(j), barWidth, 'FaceColor', colors(j,:), 'EdgeColor', 'k');
+        text(x, times(j) + 1, labels{j}, ...
+            'Rotation', 90, 'HorizontalAlignment', 'left', 'FontSize', 8);
+    end
+
+    % For group label under the bars
+    mid_x = (k - 1) * groupSpacing + n / 2 + 0.5;
+    x_ticks(end+1) = mid_x;
+    x_labels{end+1} = groupNames{k};
+end
+
+xticks(x_ticks);
+xticklabels(x_labels);
+ylim([0, 65]); % assume t goes to ~60s
+xlim([0, x_ticks(end) + groupSpacing]);
+
+
+% ===============================================
+%% ======= PLOT 3/5: Area Dynamics Over Time
 % ===============================================
 
 figure('Name','2/4: Module Dynamics Over Time');
@@ -251,7 +357,7 @@ end
 
 
 % ===============================================
-%% ======= PLOT 3/4: Global Error vs Local Frustration (Per Experiment)
+%% ======= PLOT 4/5: Global Error vs Local Frustration (Per Experiment)
 % ===============================================
 
 % Set up color map for up to 100 experiments
@@ -371,7 +477,7 @@ legend(uniqueExpNames, 'Location', 'northeastoutside');
 
 
 % ===============================================
-%% ======= PLOT 4/4: Integrated Information (Φ)
+%% ======= PLOT 5/5: Integrated Information (Φ)
 % ===============================================
 % Set up color map and initialize
 expColors = lines(100);  % Color map for up to 100 experiments
