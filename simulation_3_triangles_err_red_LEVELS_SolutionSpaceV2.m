@@ -37,45 +37,44 @@ expanded_shape = [0 0; 1 0; 2 0; 3 0; 4 0];
 compressed_shape = [0 0; 0.5 1; 1 0; 1.5 1; 2 0];
 
 % ===============================================
-%% ======= PLOT 1/5: Final Shapes Grouped by Strategy (Updated, Label Underneath)
+%% ======= PLOT 1.a/5: Final Shapes Grouped by Strategy (Updated, Label Underneath)
 % ===============================================
-figure('Name','1/4: Final Shapes Grouped by Strategy');
+figure('Name','1.a/5: Final Shapes Grouped by Strategy');
 hold on;
 axis equal;
 xlabel('X');
 ylabel('Y');
-title('1/4: Diversity of Solutions by Strategy');
+title('1.a/5: Diversity of Solutions by Strategy');
 grid on;
-spacing_x = 5; % horizontal spacing between groups
-spacing_y = 3; % vertical spacing between solutions in a group
-max_per_column = 8; % maximum solutions per column
-% Store a count for each group to place them nicely
+set(gca, 'XTickLabel', []);
+set(gca, 'YTickLabel', []);
+
+spacing_x = 5;
+spacing_y = 3;
+max_per_column = 8;
 groupSolutionCount = zeros(1, numGroups);
-theta = linspace(0, 2*pi, 20); % for body circles
+theta = linspace(0, 2*pi, 20);
 radius_body = 0.05;
-% Set up consistent experiment colors (same as Plot 3/4)
 expColors = lines(100);
-uniqueExpNames = {}; % to track and index experiment names
-% Loop through each file (experiment)
+uniqueExpNames = {};
+
 for i = 1:length(files)
     T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
     
     fname = upper(files(i).name);
 
-    % Match and extract experiment name (e.g., EXP1)
     expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
     if ~isempty(expMatch)
-        expName = upper(strrep(expMatch{1}{1}, '_', '')); % remove underscore
+        expName = upper(strrep(expMatch{1}{1}, '_', ''));
     else
         expName = 'Unknown';
     end
-    % Get experiment color
     if ~ismember(expName, uniqueExpNames)
         uniqueExpNames{end+1} = expName;
     end
     expIdx = find(strcmp(uniqueExpNames, expName));
     color = expColors(expIdx, :);
-    % If there is no success, plot a cross instead of the shapes
+
     if T.success_log(end) == 0
         groupIdx = [];
         for k = 1:numGroups
@@ -88,35 +87,42 @@ for i = 1:length(files)
             warning('Unknown group in file: %s', files(i).name);
             continue;
         end
-        
-        % Compute offset
+
         idx = groupSolutionCount(groupIdx);
         dx = (groupIdx - 1) * spacing_x;
         dy = -mod(idx, max_per_column) * spacing_y;
         dx = dx + floor(idx / max_per_column) * (spacing_x/2);
         groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
-        % Plot a cross
+
         label_x = dx + 1;
         label_y = dy;
         plot(label_x, label_y, 'x', 'MarkerSize', 8, 'LineWidth', 2, 'Color', [0.7, 0.7, 0.7]);
-        % Add experiment label
         text(label_x, label_y - 0.3, expName, 'FontSize', 8, 'Color', [0.7, 0.7, 0.7], ...
             'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
         continue;
     end
-    % Final body positions (for successful experiments)
+
     bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
           T.body4_pos_x(end), T.body5_pos_x(end)];
     by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
           T.body4_pos_y(end), T.body5_pos_y(end)];
-    % Normalization
+
+    % === Improved Normalization ===
     bx = bx - bx(1);
-    by = by - by(1);
     bx = bx - min(bx);
-    bx = bx / max(bx) * 2;
+    range_bx = max(bx);
+    if range_bx > 0
+        bx = bx / range_bx * 2;
+    end
+    
+    by = by - by(1);
     by = by - min(by);
-    by = by / max(by) * 1;
-    % Determine group
+    range_by = max(by);
+    if range_by > 0
+        by = by / range_by * 1;
+    end
+
+
     groupIdx = [];
     for k = 1:numGroups
         if contains(fname, strategyGroups{k})
@@ -128,39 +134,156 @@ for i = 1:length(files)
         warning('Unknown group in file: %s', files(i).name);
         continue;
     end
+
+    idx = groupSolutionCount(groupIdx);
+    dx = (groupIdx - 1) * spacing_x;
+    dy = -mod(idx, max_per_column) * spacing_y;
+    dx = dx + floor(idx / max_per_column) * (spacing_x/2);
+    groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
+
+    bx = bx + dx;
+    by = by + dy;
+
+    for j = 1:size(spring_pairs, 1)
+        i1 = spring_pairs(j,1);
+        i2 = spring_pairs(j,2);
+        plot([bx(i1), bx(i2)], [by(i1), by(i2)], '-', 'Color', color, 'LineWidth', 1.5);
+    end
+
+    for j = 1:5
+        fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
+            color, 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.5);
+    end
+
+    label_x = mean(bx);
+    label_y = min(by) - 0.3;
+    text(label_x, label_y, expName, 'FontSize', 8, 'Color', color, ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
+end
+
+for k = 1:numGroups
+    xpos = (k-1) * spacing_x + 1;
+    ypos = 2;
+    text(xpos, ypos, groupNames{k}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 12);
+end
+
+xlim([-1, numGroups * spacing_x]);
+ylim([-max_per_column * spacing_y - 1, 3]);
+
+
+% ===============================================
+%% ======= PLOT 1.b/5: All Final Shapes Grouped by Strategy (Grey if failed)
+% ===============================================
+figure('Name','1.b/5: All Final Shapes by Strategy (Success = Colour, Failed = Grey)');
+hold on;
+axis equal;
+xlabel('X');
+ylabel('Y');
+title('1.b/5: All Final Solutions by Strategy (Success = Colour, Failed = Grey)');
+grid on;
+set(gca, 'XTickLabel', []);
+set(gca, 'YTickLabel', []);
+
+spacing_x = 5;
+spacing_y = 3;
+max_per_column = 8;
+groupSolutionCount = zeros(1, numGroups);
+theta = linspace(0, 2*pi, 20);
+radius_body = 0.05;
+expColors = lines(100);
+uniqueExpNames = {};
+
+for i = 1:length(files)
+    T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
+    fname = upper(files(i).name);
+
+    % Match experiment name
+    expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
+    if ~isempty(expMatch)
+        expName = upper(strrep(expMatch{1}{1}, '_', ''));
+    else
+        expName = 'Unknown';
+    end
+    if ~ismember(expName, uniqueExpNames)
+        uniqueExpNames{end+1} = expName;
+    end
+    expIdx = find(strcmp(uniqueExpNames, expName));
+    color = expColors(expIdx, :);
+
+    % Determine strategy group
+    groupIdx = [];
+    for k = 1:numGroups
+        if contains(fname, strategyGroups{k})
+            groupIdx = k;
+            break;
+        end
+    end
+    if isempty(groupIdx)
+        warning('Unknown group in file: %s', files(i).name);
+        continue;
+    end
+
     % Compute offset
     idx = groupSolutionCount(groupIdx);
     dx = (groupIdx - 1) * spacing_x;
     dy = -mod(idx, max_per_column) * spacing_y;
     dx = dx + floor(idx / max_per_column) * (spacing_x/2);
     groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
+
+    % Final body positions
+    bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
+          T.body4_pos_x(end), T.body5_pos_x(end)];
+    by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
+          T.body4_pos_y(end), T.body5_pos_y(end)];
+
+    % Normalize
+    bx = bx - bx(1);
+    bx = bx - min(bx);
+    if max(bx) > 0
+        bx = bx / max(bx) * 2;
+    end
+    by = by - by(1);
+    by = by - min(by);
+    if max(by) > 0
+        by = by / max(by) * 1;
+    end
+
     % Apply offset
     bx = bx + dx;
     by = by + dy;
+
+    % Color: grey if failed
+    if T.success_log(end) == 0
+        color = [0.7, 0.7, 0.7];
+    end
+
     % Plot springs
     for j = 1:size(spring_pairs, 1)
         i1 = spring_pairs(j,1);
         i2 = spring_pairs(j,2);
         plot([bx(i1), bx(i2)], [by(i1), by(i2)], '-', 'Color', color, 'LineWidth', 1.5);
     end
-    % Plot bodies (balls)
+
+    % Plot bodies
     for j = 1:5
         fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
             color, 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.5);
     end
-    % === NEW: Add EXP# Label Underneath Shape ===
+
+    % Label
     label_x = mean(bx);
     label_y = min(by) - 0.3;
     text(label_x, label_y, expName, 'FontSize', 8, 'Color', color, ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
 end
-% Add group names as labels
+
+% Group names
 for k = 1:numGroups
     xpos = (k-1) * spacing_x + 1;
     ypos = 2;
     text(xpos, ypos, groupNames{k}, 'HorizontalAlignment', 'center', 'FontWeight', 'bold', 'FontSize', 12);
 end
-% === Ensure everything fits in the figure ===
+
 xlim([-1, numGroups * spacing_x]);
 ylim([-max_per_column * spacing_y - 1, 3]);
 
