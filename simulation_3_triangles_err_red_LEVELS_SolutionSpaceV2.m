@@ -403,12 +403,21 @@ xticklabels(x_labels);
 ylim([0, 65]); % Assuming max t = ~60s
 xlim([0, x_ticks(end) + groupSpacing]);
 
-% Add legend using invisible bars
-hold on;
-for i = 1:numel(legendEntries)
-    hLegend(i) = bar(nan, nan, 'FaceColor', legendColors(i,:), 'EdgeColor', 'k');
+% Add legend using invisible bars (only if successful runs exist)
+if ~isempty(legendEntries)
+    hold on;
+    hLegend = gobjects(1, numel(legendEntries)); % Preallocate for safety
+    for i = 1:numel(legendEntries)
+        hLegend(i) = bar(nan, nan, 'FaceColor', legendColors(i,:), 'EdgeColor', 'k');
+    end
+    legend(hLegend, legendEntries, 'Location', 'eastoutside');
+else
+    % No successful solutions were found
+    text(0.5, 0.5, 'No successful solutions found.', ...
+        'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+        'FontSize', 12, 'FontWeight', 'bold', 'Color', [0.5 0 0]);
 end
-legend(hLegend, legendEntries, 'Location', 'eastoutside');
+
 
 
 % ===============================================
