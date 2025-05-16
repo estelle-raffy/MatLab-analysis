@@ -76,7 +76,29 @@ for i = 1:length(files)
     expIdx = find(strcmp(uniqueExpNames, expName));
     color = expColors(expIdx, :);
 
-    if T.success_log(end) == 0
+    % ==== New Logic: Check for ≥5s of all-zero actuation ====
+    m1 = T.M1_actuation_final;
+    m2 = T.M2_actuation_final;
+    m3 = T.M3_actuation_final;
+    t  = T.current_time;
+
+    isZeroAll = (m1 == 0) & (m2 == 0) & (m3 == 0);
+    d = diff([0; isZeroAll; 0]);
+    starts = find(d == 1);
+    ends = find(d == -1) - 1;
+
+    foundStreak = false;
+    for z = 1:length(starts)
+        duration = t(ends(z)) - t(starts(z));
+        if duration >= 5
+            zeroEndIndex = ends(z); % Use end of qualifying zero-streak
+            foundStreak = true;
+            break;
+        end
+    end
+
+    if ~foundStreak
+        % ==== Plot grey cross and label if no valid streak ====
         groupIdx = [];
         for k = 1:numGroups
             if contains(fname, strategyGroups{k})
@@ -103,10 +125,11 @@ for i = 1:length(files)
         continue;
     end
 
-    bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
-          T.body4_pos_x(end), T.body5_pos_x(end)];
-    by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
-          T.body4_pos_y(end), T.body5_pos_y(end)];
+    % ==== Extract body positions at the end of the zero-streak ====
+    bx = [T.body1_pos_x(zeroEndIndex), T.body2_pos_x(zeroEndIndex), T.body3_pos_x(zeroEndIndex), ...
+          T.body4_pos_x(zeroEndIndex), T.body5_pos_x(zeroEndIndex)];
+    by = [T.body1_pos_y(zeroEndIndex), T.body2_pos_y(zeroEndIndex), T.body3_pos_y(zeroEndIndex), ...
+          T.body4_pos_y(zeroEndIndex), T.body5_pos_y(zeroEndIndex)];
 
     % === Improved Normalization ===
     bx = bx - bx(1);
@@ -122,7 +145,6 @@ for i = 1:length(files)
     if range_by > 0
         by = by / range_by * 1;
     end
-
 
     groupIdx = [];
     for k = 1:numGroups
@@ -172,6 +194,7 @@ xlim([-1, numGroups * spacing_x]);
 ylim([-max_per_column * spacing_y - 1, 3]);
 
 
+
 % ===============================================
 %% ======= PLOT 1.b/2: All Final Shapes Grouped by Strategy (Grey if failed)
 % ===============================================
@@ -211,6 +234,27 @@ for i = 1:length(files)
     expIdx = find(strcmp(uniqueExpNames, expName));
     color = expColors(expIdx, :);
 
+    % ==== New Logic: Check for ≥5s of all-zero actuation ====
+    m1 = T.M1_actuation_final;
+    m2 = T.M2_actuation_final;
+    m3 = T.M3_actuation_final;
+    t  = T.current_time;
+
+    isZeroAll = (m1 == 0) & (m2 == 0) & (m3 == 0);
+    d = diff([0; isZeroAll; 0]);
+    starts = find(d == 1);
+    ends = find(d == -1) - 1;
+
+    foundStreak = false;
+    for z = 1:length(starts)
+        duration = t(ends(z)) - t(starts(z));
+        if duration >= 5
+            zeroEndIndex = ends(z); % Use end of qualifying zero-streak
+            foundStreak = true;
+            break;
+        end
+    end
+
     % Determine strategy group
     groupIdx = [];
     for k = 1:numGroups
@@ -231,32 +275,39 @@ for i = 1:length(files)
     dx = dx + floor(idx / max_per_column) * (spacing_x/2);
     groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
 
-    % Final body positions
-    bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
-          T.body4_pos_x(end), T.body5_pos_x(end)];
-    by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
-          T.body4_pos_y(end), T.body5_pos_y(end)];
+    if foundStreak
+        % ==== Extract body positions at the end of the zero-streak ====
+        bx = [T.body1_pos_x(zeroEndIndex), T.body2_pos_x(zeroEndIndex), T.body3_pos_x(zeroEndIndex), ...
+              T.body4_pos_x(zeroEndIndex), T.body5_pos_x(zeroEndIndex)];
+        by = [T.body1_pos_y(zeroEndIndex), T.body2_pos_y(zeroEndIndex), T.body3_pos_y(zeroEndIndex), ...
+              T.body4_pos_y(zeroEndIndex), T.body5_pos_y(zeroEndIndex)];
+    else
+        % ==== Plot failed in grey at final timestep ====
+        bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
+              T.body4_pos_x(end), T.body5_pos_x(end)];
+        by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
+              T.body4_pos_y(end), T.body5_pos_y(end)];
+        color = [0.7, 0.7, 0.7];
+    end
 
-    % Normalize
+    % === Improved Normalization ===
     bx = bx - bx(1);
     bx = bx - min(bx);
-    if max(bx) > 0
-        bx = bx / max(bx) * 2;
+    range_bx = max(bx);
+    if range_bx > 0
+        bx = bx / range_bx * 2;
     end
+
     by = by - by(1);
     by = by - min(by);
-    if max(by) > 0
-        by = by / max(by) * 1;
+    range_by = max(by);
+    if range_by > 0
+        by = by / range_by * 1;
     end
 
     % Apply offset
     bx = bx + dx;
     by = by + dy;
-
-    % Color: grey if failed
-    if T.success_log(end) == 0
-        color = [0.7, 0.7, 0.7];
-    end
 
     % Plot springs
     for j = 1:size(spring_pairs, 1)
@@ -483,3 +534,184 @@ else
 end
 
 xlim([0, max(x_ticks)+groupSpacing]);
+
+
+% ===================================================================
+%% ======= PLOT 3/3: beingSelfish dynamics under weight conditions 
+% ===================================================================
+
+% === Setup ===
+baseFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
+weightFolders = dir(baseFolder);
+weightFolders = weightFolders([weightFolders.isdir]); 
+weightFolders = weightFolders(~ismember({weightFolders.name}, {'.', '..'}));
+
+dataStruct = struct('exp', {}, 'strategy', {}, 'weightRatio', {}, 'selfishPercent', {}, 'folder', {});
+
+for w = 1:length(weightFolders)
+    folderName = weightFolders(w).name;
+    weightPattern = regexp(folderName, 'Wa(\d+)Wb(\d+)Wc(\d+)', 'tokens');
+    if isempty(weightPattern), continue; end
+
+    weights = str2double(weightPattern{1});
+    Wa = weights(1); Wb = weights(2); Wc = weights(3);
+    if Wc == 0, continue; end  % avoid division by zero
+    weightRatio = (Wa + Wb) / Wc;
+
+    fullPath = fullfile(baseFolder, folderName);
+    excelFiles = dir(fullfile(fullPath, '*.xlsx'));
+
+    for f = 1:length(excelFiles)
+        fileName = upper(excelFiles(f).name);
+        expMatch = regexp(fileName, '(EXP\d+)_([A-Z]+)', 'tokens');
+        if isempty(expMatch), continue; end
+        
+        expID = expMatch{1}{1}; 
+        strategy = expMatch{1}{2}; 
+        if ~ismember(strategy, {'SELFISH', 'GLOBAL', 'HOMEO'}), continue; end
+
+        T = readtable(fullfile(fullPath, excelFiles(f).name));
+        if ~all(ismember({'final_Wb_M1', 'final_Wb_M2'}, T.Properties.VariableNames)), continue; end
+
+        avgSelfish = mean([T.final_Wb_M1 == 0, T.final_Wb_M2 == 0], 'all') * 100;
+
+        % Store result
+        dataStruct(end+1).exp = expID;
+        dataStruct(end).strategy = strategy;
+        dataStruct(end).weightRatio = weightRatio;
+        dataStruct(end).selfishPercent = avgSelfish;
+        dataStruct(end).folder = folderName;
+    end
+end
+
+% === Plotting ===
+if isempty(dataStruct)
+    error('No valid data found.');
+end
+
+T = struct2table(dataStruct);
+expList = unique(T.exp);
+strategies = {'SELFISH', 'GLOBAL', 'HOMEO'};
+shapes = {'o', 's', '^'}; 
+colors = lines(numel(expList)); 
+
+figure('Name', 'Effect of Weight Ratio on Being Selfish');
+tiledlayout(2,2, 'Padding', 'compact');
+
+for e = 1:numel(expList)
+    nexttile;
+    ylim([0 50]);
+    expName = expList{e};
+    expData = T(strcmp(T.exp, expName), :);
+    hold on;
+
+    for s = 1:length(strategies)
+        strat = strategies{s};
+        shape = shapes{s};
+        stratData = expData(strcmp(expData.strategy, strat), :);
+        scatter(stratData.weightRatio, stratData.selfishPercent, ...
+            80, shape, 'filled', ...
+            'DisplayName', strat);
+    end
+
+    title(['Experiment ', expName(end)]);
+    xlabel('(Wa + Wb) / Wc');
+    ylabel('% Time Being Selfish');
+    legend('Location','best');
+    grid on;
+end
+
+sgtitle('Being Selfish vs Weight Ratio Across Strategies and Experiments');
+
+% ===============================================
+%% ======= PLOT 4/4: Heatmap of Selfishness
+% ===============================================
+
+rootFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
+weightFolders = dir(fullfile(rootFolder, 'Wa*Wb*Wc*'));
+
+strategies = {'SELFISH', 'GLOBAL', 'HOMEO'};
+expNumbers = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
+markerShapes = {'o', 's', '^'};  % circle, square, triangle
+
+figure('Name', 'Heatmap of Selfishness (% of time final\_Wb = 0)');
+tiledlayout(2,2);
+colormap(parula);
+
+allValues = [];
+
+% === Parse Data ===
+dataPoints = [];
+
+for f = 1:length(weightFolders)
+    folderName = weightFolders(f).name;
+    weightMatch = regexp(folderName, 'Wa(\d+)Wb(\d+)Wc(\d+)', 'tokens');
+    if isempty(weightMatch), continue; end
+    weights = str2double(weightMatch{1});
+    Wa = weights(1); Wb = weights(2); Wc = weights(3);
+    Wa_ratio = Wa / Wb;
+    Wc_ratio = Wc / Wb;
+
+    folderPath = fullfile(weightFolders(f).folder, folderName);
+    files = dir(fullfile(folderPath, '*.xlsx'));
+
+    for i = 1:length(files)
+        fname = upper(files(i).name);
+        
+        % Skip if not a target experiment and strategy
+        if ~any(contains(fname, strategies)), continue; end
+        if ~any(contains(fname, expNumbers)), continue; end
+
+        T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
+
+        % Calculate % time selfish
+        selfishPerc = mean([T.final_Wb_M1 == 0, T.final_Wb_M2 == 0], 'all') * 100;
+        allValues(end+1) = selfishPerc;
+
+        % Identify experiment and strategy
+        expIdx = find(contains(fname, expNumbers));
+        stratIdx = find(contains(fname, strategies));
+
+        dataPoints(end+1).Wa_ratio = Wa_ratio;
+        dataPoints(end).Wc_ratio = Wc_ratio;
+        dataPoints(end).selfishPerc = selfishPerc;
+        dataPoints(end).expIdx = expIdx;
+        dataPoints(end).marker = markerShapes{stratIdx};
+    end
+end
+
+% Determine global color limits for consistency
+minVal = min(allValues);
+maxVal = max(allValues);
+
+% === Plot Subplots ===
+for e = 1:4
+    nexttile;
+    hold on; grid on;
+    title(['Experiment ', num2str(e)]);
+    xlabel('Wa / Wb');
+    ylabel('Wc / Wb');
+    axis equal;
+
+    for i = 1:length(dataPoints)
+        if dataPoints(i).expIdx == e
+            scatter(dataPoints(i).Wa_ratio, ...
+                    dataPoints(i).Wc_ratio, ...
+                    100, ...
+                    dataPoints(i).selfishPerc, ...
+                    dataPoints(i).marker, ...
+                    'filled', ...
+                    'MarkerEdgeColor', 'k', ...
+                    'LineWidth', 0.5);
+        end
+    end
+
+    caxis([minVal maxVal]);
+end
+
+% Add colorbar
+cb = colorbar;
+cb.Label.String = '% Time Selfish (final Wb = 0)';
+cb.Position(3) = 0.02;  % Adjust width
+
+
