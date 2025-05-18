@@ -10,6 +10,8 @@ y6 = rawTable.body2_pos_x; y7 = rawTable.body2_pos_y;
 y8 = rawTable.body3_pos_x; y9 = rawTable.body3_pos_y;
 y10 = rawTable.body5_pos_x; y11 = rawTable.body5_pos_y;
 y2 = rawTable.target_x; y3 = rawTable.target_y;
+obstacle_x = rawTable.obstacle_x; % New obstacle x-coordinate
+obstacle_y = rawTable.obstacle_y; % New obstacle y-coordinate
 
 %% Define Circle and Spring Properties
 body_diameter = 21;
@@ -21,7 +23,7 @@ sampling_rate = 10;
 %% Create Figure
 figure; hold on;
 history_bodies = cell(1, 5);
-gif_filename = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_LOCAL\my_animation.gif';
+gif_filename = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\my_animation.gif';
 
 indices = 1:sampling_rate:length(time);
 last_index = indices(end);
@@ -89,6 +91,7 @@ for idx = 1:length(indices)
         end
     end
 
+    %{
     % Add Obstacle (replacing the rectangle function)
     % Define the size of the obstacle (same as your Python code)
     obstacle_size = 40;
@@ -100,11 +103,11 @@ for idx = 1:length(indices)
 
     % Fill the obstacle with semi-transparency
     fill(x_obstacle, y_obstacle, 'm', 'FaceAlpha', 0.4, 'EdgeColor', 'm');
-
+    %}
 
     % Plot Formatting
     xlim([-300 300]); ylim([0 300]); axis equal;
-    title('EXP4 LOCAL Wa1 Wb0 Wc0 WnM1 1 WnM2 -1 M1M2 M2M3 Demand400 Target500-550 Thresh45 T60', ...
+    title('EXP3 GLOBAL ONLY Wa0 Wb0 Wc3 WnM1 3 WnM2 -1 M1M2 M2M3 Demand350 Target500-450 Thresh45 T60', ...
           sprintf('System Configuration at t = %.1f sec', time(i)));
 
     % Legend
