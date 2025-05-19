@@ -1,7 +1,7 @@
 clear; clc;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %{
@@ -623,95 +623,191 @@ end
 
 sgtitle('Being Selfish vs Weight Ratio Across Strategies and Experiments');
 
-% ===============================================
-%% ======= PLOT 4/4: Heatmap of Selfishness
-% ===============================================
+% ===================================================================
+%% ======= PLOT 4/4: 3D Scatter of Selfishness vs Weight Ratios ======
+% ===================================================================
 
-rootFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
-weightFolders = dir(fullfile(rootFolder, 'Wa*Wb*Wc*'));
+% === Setup ===
+baseFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
+weightFolders = dir(baseFolder);
+weightFolders = weightFolders([weightFolders.isdir]); 
+weightFolders = weightFolders(~ismember({weightFolders.name}, {'.', '..'}));
 
-strategies = {'SELFISH', 'GLOBAL', 'HOMEO'};
-expNumbers = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
-markerShapes = {'o', 's', '^'};  % circle, square, triangle
+dataStruct = struct('exp', {}, 'strategy', {}, 'WaWb', {}, 'WcWb', {}, 'selfishPercent', {}, 'folder', {});
 
-figure('Name', 'Heatmap of Selfishness (% of time final\_Wb = 0)');
-tiledlayout(2,2);
-colormap(parula);
+for w = 1:length(weightFolders)
+    folderName = weightFolders(w).name;
+    weightPattern = regexp(folderName, 'Wa(\d+)Wb(\d+)Wc(\d+)', 'tokens');
+    if isempty(weightPattern), continue; end
 
-allValues = [];
-
-% === Parse Data ===
-dataPoints = [];
-
-for f = 1:length(weightFolders)
-    folderName = weightFolders(f).name;
-    weightMatch = regexp(folderName, 'Wa(\d+)Wb(\d+)Wc(\d+)', 'tokens');
-    if isempty(weightMatch), continue; end
-    weights = str2double(weightMatch{1});
+    weights = str2double(weightPattern{1});
     Wa = weights(1); Wb = weights(2); Wc = weights(3);
-    Wa_ratio = Wa / Wb;
-    Wc_ratio = Wc / Wb;
+    if Wb == 0, continue; end  % avoid division by zero
 
-    folderPath = fullfile(weightFolders(f).folder, folderName);
-    files = dir(fullfile(folderPath, '*.xlsx'));
+    WaWb = Wa / Wb;
+    WcWb = Wc / Wb;
 
-    for i = 1:length(files)
-        fname = upper(files(i).name);
-        
-        % Skip if not a target experiment and strategy
-        if ~any(contains(fname, strategies)), continue; end
-        if ~any(contains(fname, expNumbers)), continue; end
+    fullPath = fullfile(baseFolder, folderName);
+    excelFiles = dir(fullfile(fullPath, '*.xlsx'));
 
-        T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
+    for f = 1:length(excelFiles)
+        fileName = upper(excelFiles(f).name);
+        expMatch = regexp(fileName, '(EXP\d+)_([A-Z]+)', 'tokens');
+        if isempty(expMatch), continue; end
 
-        % Calculate % time selfish
-        selfishPerc = mean([T.final_Wb_M1 == 0, T.final_Wb_M2 == 0], 'all') * 100;
-        allValues(end+1) = selfishPerc;
+        expID = expMatch{1}{1};
+        strategy = expMatch{1}{2};
+        if ~ismember(strategy, {'SELFISH', 'GLOBAL', 'HOMEO'}), continue; end
 
-        % Identify experiment and strategy
-        expIdx = find(contains(fname, expNumbers));
-        stratIdx = find(contains(fname, strategies));
+        T = readtable(fullfile(fullPath, excelFiles(f).name));
+        if ~all(ismember({'final_Wb_M1', 'final_Wb_M2'}, T.Properties.VariableNames)), continue; end
 
-        dataPoints(end+1).Wa_ratio = Wa_ratio;
-        dataPoints(end).Wc_ratio = Wc_ratio;
-        dataPoints(end).selfishPerc = selfishPerc;
-        dataPoints(end).expIdx = expIdx;
-        dataPoints(end).marker = markerShapes{stratIdx};
+        avgSelfish = mean([T.final_Wb_M1 == 0, T.final_Wb_M2 == 0], 'all') * 100;
+
+        % Store result
+        dataStruct(end+1).exp = expID;
+        dataStruct(end).strategy = strategy;
+        dataStruct(end).WaWb = WaWb;
+        dataStruct(end).WcWb = WcWb;
+        dataStruct(end).selfishPercent = avgSelfish;
+        dataStruct(end).folder = folderName;
     end
 end
 
-% Determine global color limits for consistency
-minVal = min(allValues);
-maxVal = max(allValues);
+% === Convert and Plot ===
+if isempty(dataStruct)
+    error('No valid data found.');
+end
 
-% === Plot Subplots ===
-for e = 1:4
+T = struct2table(dataStruct);
+strategies = {'SELFISH', 'GLOBAL', 'HOMEO'};
+shapes = {'o', 's', '^'};
+colors = lines(numel(strategies));
+
+figure('Name', '3D Scatter: Selfishness vs Weight Ratios');
+hold on;
+grid on;
+view(45, 25);
+xlabel('Wa / Wb');
+ylabel('Wc / Wb');
+zlabel('% Time Being Selfish');
+title('Selfishness by Control Strategy and Weight Ratios');
+
+for s = 1:length(strategies)
+    strat = strategies{s};
+    shape = shapes{s};
+    color = colors(s, :);
+    stratData = T(strcmp(T.strategy, strat), :);
+
+    scatter3(stratData.WaWb, stratData.WcWb, stratData.selfishPercent, ...
+        80, color, shape, 'filled', 'DisplayName', strat);
+end
+
+legend('Location', 'best');
+
+
+
+%{
+% ===================================================================
+%% ======= PLOT 4/4: Refined - 2D Ratio + Color Gradient by Strategy
+% ===================================================================
+
+% === Setup ===
+baseFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
+weightFolders = dir(baseFolder);
+weightFolders = weightFolders([weightFolders.isdir]); 
+weightFolders = weightFolders(~ismember({weightFolders.name}, {'.', '..'}));
+
+dataStruct = struct('exp', {}, 'strategy', {}, 'WaWb', {}, 'WcWb', {}, 'selfishPercent', {}, 'folder', {});
+
+for w = 1:length(weightFolders)
+    folderName = weightFolders(w).name;
+    weightPattern = regexp(folderName, 'Wa(\d+)Wb(\d+)Wc(\d+)', 'tokens');
+    if isempty(weightPattern), continue; end
+
+    weights = str2double(weightPattern{1});
+    Wa = weights(1); Wb = weights(2); Wc = weights(3);
+    if Wb == 0, continue; end  % avoid division by zero
+    WaWb = Wa / Wb;
+    WcWb = Wc / Wb;
+
+    fullPath = fullfile(baseFolder, folderName);
+    excelFiles = dir(fullfile(fullPath, '*.xlsx'));
+
+    for f = 1:length(excelFiles)
+        fileName = upper(excelFiles(f).name);
+        expMatch = regexp(fileName, '(EXP\d+)_([A-Z]+)', 'tokens');
+        if isempty(expMatch), continue; end
+        
+        expID = expMatch{1}{1}; 
+        strategy = expMatch{1}{2}; 
+        if ~ismember(strategy, {'SELFISH', 'GLOBAL', 'HOMEO'}), continue; end
+
+        T = readtable(fullfile(fullPath, excelFiles(f).name));
+        if ~all(ismember({'final_Wb_M1', 'final_Wb_M2'}, T.Properties.VariableNames)), continue; end
+
+        avgSelfish = mean([T.final_Wb_M1 == 0, T.final_Wb_M2 == 0], 'all') * 100;
+
+        % Store result
+        dataStruct(end+1).exp = expID;
+        dataStruct(end).strategy = strategy;
+        dataStruct(end).WaWb = WaWb;
+        dataStruct(end).WcWb = WcWb;
+        dataStruct(end).selfishPercent = avgSelfish;
+        dataStruct(end).folder = folderName;
+    end
+end
+
+% === Plotting ===
+if isempty(dataStruct)
+    error('No valid data found.');
+end
+
+T = struct2table(dataStruct);
+expList = unique(T.exp);
+strategies = {'SELFISH', 'GLOBAL', 'HOMEO'};
+shapes = {'o', 's', '^'};  % marker shapes
+cmap = parula(256);  % or try hot, jet, viridis (if installed)
+colorLimits = [0 100];  % selfish % range
+
+figure('Name', 'Selfishness Landscape: Wa/Wb vs Wc/Wb');
+
+tiledlayout(2,2, 'Padding', 'compact');
+
+for e = 1:numel(expList)
     nexttile;
-    hold on; grid on;
-    title(['Experiment ', num2str(e)]);
+    expName = expList{e};
+    expData = T(strcmp(T.exp, expName), :);
+    hold on;
+
+    for s = 1:length(strategies)
+        strat = strategies{s};
+        shape = shapes{s};
+        stratData = expData(strcmp(expData.strategy, strat), :);
+
+        % Normalize color by selfish % (0–100 → 1–256 index)
+        colorIdx = round(rescale(stratData.selfishPercent, 1, 256));
+        scatterColors = cmap(colorIdx, :);
+
+        scatter(stratData.WaWb, stratData.WcWb, ...
+            100, scatterColors, shape, ...
+            'filled', 'DisplayName', strat, 'MarkerEdgeColor','k');
+    end
+
+    title(['Experiment ', expName(end)]);
     xlabel('Wa / Wb');
     ylabel('Wc / Wb');
     axis equal;
-
-    for i = 1:length(dataPoints)
-        if dataPoints(i).expIdx == e
-            scatter(dataPoints(i).Wa_ratio, ...
-                    dataPoints(i).Wc_ratio, ...
-                    100, ...
-                    dataPoints(i).selfishPerc, ...
-                    dataPoints(i).marker, ...
-                    'filled', ...
-                    'MarkerEdgeColor', 'k', ...
-                    'LineWidth', 0.5);
-        end
-    end
-
-    caxis([minVal maxVal]);
+    grid on;
+    legend('Location','best');
 end
 
-% Add colorbar
-cb = colorbar;
-cb.Label.String = '% Time Selfish (final Wb = 0)';
-cb.Position(3) = 0.02;  % Adjust width
+% Colorbar for selfish %
+cb = colorbar('Position',[0.93 0.11 0.015 0.815]);
+cb.Label.String = '% Time Being Selfish';
+cb.Limits = colorLimits;
+colormap(cmap);
 
+sgtitle('Refined View: Selfishness by Strategy and Weight Ratios');
 
+%}
