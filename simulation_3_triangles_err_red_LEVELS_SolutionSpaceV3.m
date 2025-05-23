@@ -38,14 +38,14 @@ expanded_shape = [0 0; 1 0; 2 0; 3 0; 4 0];
 compressed_shape = [0 0; 0.5 1; 1 0; 1.5 1; 2 0];
 
 % ===============================================
-%% ======= PLOT 1.a/4: Final Shapes Grouped by Strategy (Updated, Label Underneath)
+%% ======= PLOT 1.a/5: Final Shapes Grouped by Strategy (Updated, Label Underneath)
 % ===============================================
-figure('Name','1.a/4: Final Shapes Grouped by Strategy');
+figure('Name','1.a/5: Final Shapes Grouped by Strategy');
 hold on;
 axis equal;
 xlabel('X');
 ylabel('Y');
-title('1.a/4: Diversity of Solutions by Strategy');
+title('1.a/5: Diversity of Solutions by Strategy');
 grid on;
 set(gca, 'XTickLabel', []);
 set(gca, 'YTickLabel', []);
@@ -199,14 +199,14 @@ ylim([-max_per_column * spacing_y - 1, 3]);
 
 
 % ===============================================
-%% ======= PLOT 1.b/4: All Final Shapes Grouped by Strategy (Grey if failed)
+%% ======= PLOT 1.b/5: All Final Shapes Grouped by Strategy (Grey if failed)
 % ===============================================
-figure('Name','1.b/4: All Final Shapes by Strategy (Success = Colour, Failed = Grey)');
+figure('Name','1.b/5: All Final Shapes by Strategy (Success = Colour, Failed = Grey)');
 hold on;
 axis equal;
 xlabel('X');
 ylabel('Y');
-title('1.b/4: All Final Solutions by Strategy (Success = Colour, Failed = Grey)');
+title('1.b/5: All Final Solutions by Strategy (Success = Colour, Failed = Grey)');
 grid on;
 set(gca, 'XTickLabel', []);
 set(gca, 'YTickLabel', []);
@@ -346,9 +346,9 @@ xlim([-1, numGroups * spacing_x]);
 ylim([-max_per_column * spacing_y - 1, 3]);
 
 
-% ===============================================
-%% ======= PLOT 2/4: Stability (Subplots per EXP)
-% ===============================================
+% ==================================================================
+%% ======= PLOT 2/5: Stability (Subplots per EXP)
+% ==================================================================
 
 expList = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
 nExps = numel(expList);
@@ -488,8 +488,11 @@ for e = 1:nExps
     xlim([0, max(x_ticks) + groupSpacing]);
 end
 
+% ========================================================================
+%% ======= PLOT 3/5: Successful Shapes Comparisons Within/Between Files
+% ========================================================================
 
-% === Plot 1: Intra-File Diversity of Success Shapes ===
+% === Plot 3.a: Intra-File Diversity of Success Shapes ===
 
 file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx'; % <-- Update this
 T = readtable(file);
@@ -542,9 +545,70 @@ for z = 1:length(starts)
     end
 end
 
+%% MAY NEED COMMENTING OFF IF WANT ACTUATION SIGNAL TO WORK
+% === Plot 3.b: Inter-File Comparison of Best Shapes ===
+
+files = {
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb033Wc0.33\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb0.33Wc1\EXP1_LOCAL.xlsx'
+}; % <-- Add your files here
+
+spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
+theta = linspace(0, 2*pi, 20);
+radius_body = 0.05;
+
+figure('Name','Inter-file shape comparison');
+hold on; axis equal; grid on;
+title('Best Final Position Across Files');
+xlabel('X'); ylabel('Y');
+colors = lines(length(files));
+
+for f = 1:length(files)
+    T = readtable(files{f});
+    m1 = T.M1_actuation_final;
+    m2 = T.M2_actuation_final;
+    m3 = T.M3_actuation_final;
+    t  = T.current_time;
+
+    isZeroAll = (m1 == 0) & (m2 == 0) & (m3 == 0);
+    d = diff([0; isZeroAll; 0]);
+    starts = find(d == 1);
+    ends = find(d == -1) - 1;
+
+    longest = 0; idx = NaN;
+    for z = 1:length(starts)
+        duration = t(ends(z)) - t(starts(z));
+        if duration >= 5 && duration > longest
+            longest = duration;
+            idx = ends(z);
+        end
+    end
+    if isnan(idx), continue; end
+
+    bx = [T.body1_pos_x(idx), T.body2_pos_x(idx), T.body3_pos_x(idx), ...
+          T.body4_pos_x(idx), T.body5_pos_x(idx)];
+    by = [T.body1_pos_y(idx), T.body2_pos_y(idx), T.body3_pos_y(idx), ...
+          T.body4_pos_y(idx), T.body5_pos_y(idx)];
+
+    % Normalize positions
+    bx = bx - bx(1); bx = bx - min(bx); if max(bx) > 0, bx = bx / max(bx) * 2; end
+    by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
+
+    for j = 1:size(spring_pairs,1)
+        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
+             '-', 'Color', colors(f,:), 'LineWidth', 1.5);
+    end
+    for j = 1:5
+        fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
+             colors(f,:), 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
+    end
+end
+
 
 % ==================================================================
-%% ===== Plot 3/4 Actuation Signals Over Time (By EXP, One Strategy)
+%% ===== Plot 4/5 Actuation Signals Over Time (By EXP, One Strategy)
 % ==================================================================
 
 % === Define strategy group to display ===
@@ -607,7 +671,7 @@ for e = 1:nExps
 end
 
 % ===================================================================
-%% ======= PLOT 4/4: 3D Scatter of Selfishness vs Weight Ratios ======
+%% ======= PLOTS 5/5: 3D Scatter of Selfishness vs Weight Ratios ======
 % ===================================================================
 
 % === Setup ===
@@ -672,7 +736,7 @@ shapes = {'o', 's', '^'};
 colors = lines(numel(strategies));
 uniqueExps = unique(T.exp);
 
-% === PLOT 1: 3D Scatter Subplots (Wa/Wb vs Wc/Wb) ===
+% === Plot 5.a: 3D Selfishness VS Wa/Wb VS Wc/Wb ===
 figure('Name', '3D Scatter: Selfishness vs Wa/Wb & Wc/Wb');
 for i = 1:min(4, numel(uniqueExps))
     subplot(2, 2, i);
@@ -688,7 +752,7 @@ for i = 1:min(4, numel(uniqueExps))
     legend(strategies, 'Location', 'best');
 end
 
-% === PLOT 2: 3D Scatter (Wa/Wc vs Wb) ===
+% === Plot 5.a: 3D Selfishness VS Wa/Wc VS Wb ===
 figure('Name', '3D Scatter: Selfishness vs Wa/Wc & Wb');
 for i = 1:min(4, numel(uniqueExps))
     subplot(2, 2, i);
@@ -704,7 +768,7 @@ for i = 1:min(4, numel(uniqueExps))
     legend(strategies, 'Location', 'best');
 end
 
-% === PLOT 3: 2D Scatter Selfishness vs Wa/Wb ===
+% === Plot 5.c: 2D Selfishness VS Wa/Wb ===
 figure('Name', '2D Scatter: Selfishness vs Wa/Wb');
 for i = 1:min(4, numel(uniqueExps))
     subplot(2, 2, i);
@@ -720,7 +784,7 @@ for i = 1:min(4, numel(uniqueExps))
     legend(strategies, 'Location', 'best');
 end
 
-% === PLOT 4: 2D Scatter Selfishness vs Wc/Wb ===
+% === Plot 5.d: 2D Selfishness VS Wc/Wb ===
 figure('Name', '2D Scatter: Selfishness vs Wc/Wb');
 for i = 1:min(4, numel(uniqueExps))
     subplot(2, 2, i);
@@ -735,7 +799,6 @@ for i = 1:min(4, numel(uniqueExps))
     end
     legend(strategies, 'Location', 'best');
 end
-
 
 
 %{
