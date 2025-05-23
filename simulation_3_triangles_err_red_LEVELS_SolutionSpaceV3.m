@@ -1,7 +1,7 @@
 clear; clc;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb033Wc0.33\target_air_500';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %{
@@ -22,8 +22,8 @@ end
 %}
 
 % Define strategy groups
-strategyGroups = {'LOCAL', 'NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL', 'HOMEO'};
-groupNames = {'Local', 'Neighbour', 'Selfish', 'M3 only', 'Global Mod', 'Homeo'};
+strategyGroups = {'LOCAL', 'NEIGHBOUR_ONLY','NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL', 'HOMEO'};
+groupNames = {'Local', 'Neigh only', 'Neighbour', 'Selfish', 'M3 only', 'Global Mod', 'Homeo'};
 numGroups = numel(strategyGroups);
 strategyColors = lines(numGroups);
 
@@ -38,14 +38,14 @@ expanded_shape = [0 0; 1 0; 2 0; 3 0; 4 0];
 compressed_shape = [0 0; 0.5 1; 1 0; 1.5 1; 2 0];
 
 % ===============================================
-%% ======= PLOT 1.a/2: Final Shapes Grouped by Strategy (Updated, Label Underneath)
+%% ======= PLOT 1.a/4: Final Shapes Grouped by Strategy (Updated, Label Underneath)
 % ===============================================
-figure('Name','1.a/2: Final Shapes Grouped by Strategy');
+figure('Name','1.a/4: Final Shapes Grouped by Strategy');
 hold on;
 axis equal;
 xlabel('X');
 ylabel('Y');
-title('1.a/2: Diversity of Solutions by Strategy');
+title('1.a/4: Diversity of Solutions by Strategy');
 grid on;
 set(gca, 'XTickLabel', []);
 set(gca, 'YTickLabel', []);
@@ -76,7 +76,7 @@ for i = 1:length(files)
     expIdx = find(strcmp(uniqueExpNames, expName));
     color = expColors(expIdx, :);
 
-    % ==== New Logic: Check for ≥5s of all-zero actuation ====
+    % ==== New Logic: Find the longest ≥5s of all-zero actuation ====
     m1 = T.M1_actuation_final;
     m2 = T.M2_actuation_final;
     m3 = T.M3_actuation_final;
@@ -87,15 +87,18 @@ for i = 1:length(files)
     starts = find(d == 1);
     ends = find(d == -1) - 1;
 
-    foundStreak = false;
+    longestDuration = 0;
+    zeroEndIndex = NaN;
+
     for z = 1:length(starts)
         duration = t(ends(z)) - t(starts(z));
-        if duration >= 5
-            zeroEndIndex = ends(z); % Use end of qualifying zero-streak
-            foundStreak = true;
-            break;
+        if duration >= 5 && duration > longestDuration
+            longestDuration = duration;
+            zeroEndIndex = ends(z); % Use end of longest qualifying zero-streak
         end
     end
+
+    foundStreak = ~isnan(zeroEndIndex);
 
     if ~foundStreak
         % ==== Plot grey cross and label if no valid streak ====
@@ -125,7 +128,7 @@ for i = 1:length(files)
         continue;
     end
 
-    % ==== Extract body positions at the end of the zero-streak ====
+    % ==== Extract body positions at the end of the longest zero-streak ====
     bx = [T.body1_pos_x(zeroEndIndex), T.body2_pos_x(zeroEndIndex), T.body3_pos_x(zeroEndIndex), ...
           T.body4_pos_x(zeroEndIndex), T.body5_pos_x(zeroEndIndex)];
     by = [T.body1_pos_y(zeroEndIndex), T.body2_pos_y(zeroEndIndex), T.body3_pos_y(zeroEndIndex), ...
@@ -196,14 +199,14 @@ ylim([-max_per_column * spacing_y - 1, 3]);
 
 
 % ===============================================
-%% ======= PLOT 1.b/2: All Final Shapes Grouped by Strategy (Grey if failed)
+%% ======= PLOT 1.b/4: All Final Shapes Grouped by Strategy (Grey if failed)
 % ===============================================
-figure('Name','1.b/2: All Final Shapes by Strategy (Success = Colour, Failed = Grey)');
+figure('Name','1.b/4: All Final Shapes by Strategy (Success = Colour, Failed = Grey)');
 hold on;
 axis equal;
 xlabel('X');
 ylabel('Y');
-title('1.b/2: All Final Solutions by Strategy (Success = Colour, Failed = Grey)');
+title('1.b/4: All Final Solutions by Strategy (Success = Colour, Failed = Grey)');
 grid on;
 set(gca, 'XTickLabel', []);
 set(gca, 'YTickLabel', []);
@@ -234,7 +237,7 @@ for i = 1:length(files)
     expIdx = find(strcmp(uniqueExpNames, expName));
     color = expColors(expIdx, :);
 
-    % ==== New Logic: Check for ≥5s of all-zero actuation ====
+    % ==== Updated Logic: Find longest ≥5s of all-zero actuation ====
     m1 = T.M1_actuation_final;
     m2 = T.M2_actuation_final;
     m3 = T.M3_actuation_final;
@@ -245,15 +248,18 @@ for i = 1:length(files)
     starts = find(d == 1);
     ends = find(d == -1) - 1;
 
-    foundStreak = false;
+    longestDuration = 0;
+    zeroEndIndex = NaN;
+
     for z = 1:length(starts)
         duration = t(ends(z)) - t(starts(z));
-        if duration >= 5
-            zeroEndIndex = ends(z); % Use end of qualifying zero-streak
-            foundStreak = true;
-            break;
+        if duration >= 5 && duration > longestDuration
+            longestDuration = duration;
+            zeroEndIndex = ends(z);
         end
     end
+
+    foundStreak = ~isnan(zeroEndIndex);
 
     % Determine strategy group
     groupIdx = [];
@@ -276,13 +282,13 @@ for i = 1:length(files)
     groupSolutionCount(groupIdx) = groupSolutionCount(groupIdx) + 1;
 
     if foundStreak
-        % ==== Extract body positions at the end of the zero-streak ====
+        % ==== Use end of the longest valid zero-streak ====
         bx = [T.body1_pos_x(zeroEndIndex), T.body2_pos_x(zeroEndIndex), T.body3_pos_x(zeroEndIndex), ...
               T.body4_pos_x(zeroEndIndex), T.body5_pos_x(zeroEndIndex)];
         by = [T.body1_pos_y(zeroEndIndex), T.body2_pos_y(zeroEndIndex), T.body3_pos_y(zeroEndIndex), ...
               T.body4_pos_y(zeroEndIndex), T.body5_pos_y(zeroEndIndex)];
     else
-        % ==== Plot failed in grey at final timestep ====
+        % ==== Failed: fallback to final timestep, use grey color ====
         bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
               T.body4_pos_x(end), T.body5_pos_x(end)];
         by = [T.body1_pos_y(end), T.body2_pos_y(end), T.body3_pos_y(end), ...
@@ -340,23 +346,20 @@ xlim([-1, numGroups * spacing_x]);
 ylim([-max_per_column * spacing_y - 1, 3]);
 
 
-
 % ===============================================
-%% ======= PLOT 2/2: Stability 
+%% ======= PLOT 2/4: Stability (Subplots per EXP)
 % ===============================================
 
-% === Setup ===
-figure('Name','Actuation Silence Periods (All Zeros)');
-hold on;
-title('Periods Where M1, M2, M3 = 0 (Grouped by Strategy)');
-ylabel('Start Time (s)');
-xlabel('Strategy Group');
-grid on;
+expList = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
+nExps = numel(expList);
 
-groupSilentStart = cell(1, numGroups);
-groupSilentDuration = cell(1, numGroups);
-groupSilentStart_expNames = cell(1, numGroups);
-groupSilentStart_expColors = cell(1, numGroups);
+% === Setup data containers ===
+expData = struct();
+for e = 1:nExps
+    expData(e).starts = cell(1, numGroups);
+    expData(e).durations = cell(1, numGroups);
+    expData(e).colors = cell(1, numGroups);
+end
 
 expColors = lines(100);
 uniqueExpNames = {};
@@ -380,19 +383,25 @@ for i = 1:length(files)
         continue;
     end
 
-    % Experiment name detection & color assignment (match plot 2/5 logic)
+    % Experiment name detection
     expMatch = regexp(fname, '(EXP[_\s]?0*\d+)', 'tokens', 'ignorecase');
     if ~isempty(expMatch)
         expName = upper(strrep(expMatch{1}{1}, '_', ''));
     else
-        expName = sprintf('File%d', i);
+        expName = sprintf('FILE%d', i);
+    end
+
+    expIdx = find(strcmp(expList, expName));
+    if isempty(expIdx)
+        warning('File %s does not match any known experiment.', files(i).name);
+        continue;
     end
 
     if ~ismember(expName, uniqueExpNames)
         uniqueExpNames{end+1} = expName;
     end
-    expIdx = find(strcmp(uniqueExpNames, expName));
-    expColor = expColors(expIdx, :);
+    expColorIdx = find(strcmp(uniqueExpNames, expName));
+    expColor = expColors(expColorIdx, :);
 
     % Check for simultaneous zero actuation
     m1 = T.M1_actuation_final;
@@ -401,8 +410,6 @@ for i = 1:length(files)
     t = T.current_time;
 
     isZeroAll = (m1 == 0) & (m2 == 0) & (m3 == 0);
-
-    % Find longest contiguous period of all-zero actuation
     d = diff([0; isZeroAll; 0]);
     starts = find(d == 1);
     ends = find(d == -1) - 1;
@@ -412,130 +419,326 @@ for i = 1:length(files)
     end
 
     durations = t(ends) - t(starts);
-    [maxDur, idxMax] = max(durations);
-    onsetTime = t(starts(idxMax));
+    onsetTimes = t(starts);
 
-    fprintf('File: %s, onsetTime: %.3f seconds\n', files(i).name, onsetTime);
-
-    % Store for plotting
-    groupSilentStart{groupIdx}(end+1) = onsetTime;
-    groupSilentDuration{groupIdx}(end+1) = maxDur;
-    groupSilentStart_expNames{groupIdx}{end+1} = expName;
-    groupSilentStart_expColors{groupIdx}(end+1, :) = expColor;
+    for idx = 1:length(onsetTimes)
+        expData(expIdx).starts{groupIdx}(end+1) = onsetTimes(idx);
+        expData(expIdx).durations{groupIdx}(end+1) = durations(idx);
+        expData(expIdx).colors{groupIdx}(end+1, :) = expColor;
+    end
 end
 
 % === Plotting ===
+figure('Name','Actuation Silence Periods (All Zeros, by EXP)');
 groupSpacing = 5;
-x_ticks = [];
-x_labels = {};
 
-anyFound = false;
-plottedExps = {};
-legendEntries = {};
-legendColors = [];
-
-for k = 1:numGroups
-    starts = groupSilentStart{k};
-    durations = groupSilentDuration{k};
-
-    if exist('groupSilentStart_expNames', 'var') && length(groupSilentStart_expNames) >= k
-        expNamesGroup = groupSilentStart_expNames{k};
-    else
-        expNamesGroup = {};
-    end
-    if exist('groupSilentStart_expColors', 'var') && length(groupSilentStart_expColors) >= k
-        expColorsGroup = groupSilentStart_expColors{k};
-    else
-        expColorsGroup = [];
-    end
-
-    n = numel(starts);
-    if n == 0
-        % No data, but still add x tick for group label
-        x_ticks(end+1) = (k - 1) * groupSpacing + 1.5;
-        x_labels{end+1} = groupNames{k};
-        continue;
-    end
-
-    anyFound = true;
-
-    for j = 1:n
-        x = (k - 1) * groupSpacing + j;
-
-        % Use default color if expColorsGroup empty or too short
-        if isempty(expColorsGroup) || size(expColorsGroup,1) < j
-            colorToUse = strategyColors(k,:);
-        else
-            colorToUse = expColorsGroup(j,:);
-        end
-
-        startTime = starts(j);
-        duration = durations(j);
-        endTime = startTime + duration;
-        midTime = (startTime + endTime) / 2;
-        halfDuration = duration / 2;
-        
-        % Plot the vertical error bar: line from start to end
-        line([x, x], [startTime, endTime], ...
-             'Color', colorToUse, ...
-             'LineWidth', 1.5);
-        
-        % Plot the center marker at mid-point (like classic error bar center)
-        plot(x, midTime, 'o', ...
-             'MarkerFaceColor', colorToUse, ...
-             'MarkerEdgeColor', 'k', ...
-             'MarkerSize', 8);
-        
-        % Optional: add caps at top and bottom like classic error bars
-        capWidth = 0.2;
-        line([x - capWidth, x + capWidth], [startTime, startTime], ...
-             'Color', colorToUse, 'LineWidth', 1.2);
-        line([x - capWidth, x + capWidth], [endTime, endTime], ...
-             'Color', colorToUse, 'LineWidth', 1.2);
-
-
-
-        % Add legend entry if not already added
-        if ~isempty(expNamesGroup) && j <= length(expNamesGroup)
-            expLabel = expNamesGroup{j};
-            if ~ismember(expLabel, plottedExps)
-                legendEntries{end+1} = expLabel;
-                legendColors(end+1, :) = colorToUse;
-                plottedExps{end+1} = expLabel;
-            end
-        end
-    end
-
-    % Group label in center under bars
-    mid_x = (k - 1) * groupSpacing + n / 2 + 0.5;
-    x_ticks(end+1) = mid_x;
-    x_labels{end+1} = groupNames{k};
-end
-
-if anyFound
-    xticks(x_ticks);
-    xticklabels(x_labels);
-    ylim([0 65]);
-
-    % Add legend bars for experiment colors
+for e = 1:nExps
+    subplot(2, 2, e);
     hold on;
-    hLegend = gobjects(1, numel(legendEntries));
-    for i = 1:numel(legendEntries)
-        hLegend(i) = plot(nan, nan, 'o', ...
-            'MarkerFaceColor', legendColors(i,:), ...
-            'MarkerEdgeColor', 'k', ...
-            'MarkerSize', 8);
+    title(['Periods Where M1, M2, M3 = 0 — ' expList{e}]);
+    ylabel('Start Time (s)');
+    xlabel('Strategy Group');
+    grid on;
+
+    x_ticks = [];
+    x_labels = {};
+
+    for k = 1:numGroups
+        starts = expData(e).starts{k};
+        durations = expData(e).durations{k};
+        colors = expData(e).colors{k};
+
+        n = numel(starts);
+        if n == 0
+            x_pos = (k - 1) * groupSpacing + 1;
+            x_ticks(end+1) = x_pos;
+            x_labels{end+1} = groupNames{k};
+            continue;
+        end
+
+        x = (k - 1) * groupSpacing + 1;
+        x_ticks(end+1) = x;
+        x_labels{end+1} = groupNames{k};
+
+        for j = 1:n
+            startTime = starts(j);
+            duration = durations(j);
+            endTime = startTime + duration;
+            colorToUse = colors(j,:);
+
+            % Vertical bar (error-bar style)
+            line([x, x], [startTime, endTime], ...
+                'Color', colorToUse, 'LineWidth', 1.5);
+
+            % Top & bottom caps
+            capWidth = 0.2;
+            line([x - capWidth, x + capWidth], [startTime, startTime], ...
+                'Color', colorToUse, 'LineWidth', 1.2);
+            line([x - capWidth, x + capWidth], [endTime, endTime], ...
+                'Color', colorToUse, 'LineWidth', 1.2);
+
+            % No center dot (was removed)
+        end
     end
-    legend(hLegend, legendEntries, 'Location', 'eastoutside');
-else
-    text(0.5, 0.5, 'No simultaneous zero actuation found.', ...
-        'Units', 'normalized', 'HorizontalAlignment', 'center', ...
-        'FontSize', 12, 'FontWeight', 'bold', 'Color', [0.5 0 0]);
+
+    % Format axis
+    xticks(sort(unique(x_ticks)));
+    xticklabels(x_labels);
+    ylim([0, 65]);
+    xlim([0, max(x_ticks) + groupSpacing]);
 end
 
-xlim([0, max(x_ticks)+groupSpacing]);
+
+% === Plot 1: Intra-File Diversity of Success Shapes ===
+
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx'; % <-- Update this
+T = readtable(file);
+
+% Define spring connections and drawing parameters
+spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
+theta = linspace(0, 2*pi, 20);
+radius_body = 0.05;
+
+% Extract actuation data
+m1 = T.M1_actuation_final;
+m2 = T.M2_actuation_final;
+m3 = T.M3_actuation_final;
+t  = T.current_time;
+
+isZeroAll = (m1 == 0) & (m2 == 0) & (m3 == 0);
+d = diff([0; isZeroAll; 0]);
+starts = find(d == 1);
+ends = find(d == -1) - 1;
+
+% Setup figure
+figure('Name','Intra-file shape diversity');
+hold on; axis equal; grid on;
+title('All Final Positions (≥5s 0-actuation) in One File');
+xlabel('X'); ylabel('Y');
+colors = lines(length(starts));
+
+for z = 1:length(starts)
+    duration = t(ends(z)) - t(starts(z));
+    if duration < 5, continue; end
+
+    idx = ends(z);
+    bx = [T.body1_pos_x(idx), T.body2_pos_x(idx), T.body3_pos_x(idx), ...
+          T.body4_pos_x(idx), T.body5_pos_x(idx)];
+    by = [T.body1_pos_y(idx), T.body2_pos_y(idx), T.body3_pos_y(idx), ...
+          T.body4_pos_y(idx), T.body5_pos_y(idx)];
+
+    % Normalize positions
+    bx = bx - bx(1); bx = bx - min(bx); if max(bx) > 0, bx = bx / max(bx) * 2; end
+    by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
+
+    for j = 1:size(spring_pairs,1)
+        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
+             '-', 'Color', colors(z,:), 'LineWidth', 1.2);
+    end
+    for j = 1:5
+        fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
+             colors(z,:), 'FaceAlpha', 0.5, 'EdgeColor', 'k', 'LineWidth', 0.3);
+    end
+end
 
 
+% ==================================================================
+%% ===== Plot 3/4 Actuation Signals Over Time (By EXP, One Strategy)
+% ==================================================================
+
+% === Define strategy group to display ===
+strategyToPlot = 'LOCAL';  % <<== input desired strategy 
+
+% === Experiment names ===
+expList = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
+nExps = numel(expList);
+
+% === Setup plot ===
+figure('Name', ['Actuation Signals — Strategy: ' strategyToPlot]);
+tiledlayout(2,2);
+
+% === Colors for M1, M2, M3 ===
+colorM1 = [0.8 0 0];    % red
+colorM2 = [0 0.6 0];    % green
+colorM3 = [0 0.2 0.8];  % blue
+
+for e = 1:nExps
+    expName = expList{e};
+    
+    nexttile;
+    hold on;
+    title([expName ' — ' strategyToPlot]);
+    xlabel('Time (s)');
+    ylabel('Actuation Signal');
+    grid on;
+
+    foundData = false;
+
+    % === Loop through files ===
+    for i = 1:length(files)
+        fname = upper(files(i).name);
+
+        % Check if this file belongs to the current EXP and strategy group
+        if contains(fname, expName) && contains(fname, upper(strategyToPlot))
+            % Read data
+            T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
+            t = T.current_time;
+            m1 = T.M1_actuation_final;
+            m2 = T.M2_actuation_final;
+            m3 = T.M3_actuation_final;
+
+            % Plot actuation signals
+            plot(t, m1, 'Color', colorM1, 'LineWidth', 1.2);
+            plot(t, m2, 'Color', colorM2, 'LineWidth', 1.2);
+            plot(t, m3, 'Color', colorM3, 'LineWidth', 1.2);
+
+            foundData = true;
+        end
+    end
+
+    if ~foundData
+        text(0.5, 0.5, 'No Data Found', ...
+            'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+            'FontSize', 12, 'FontWeight', 'bold', 'Color', [0.5 0 0]);
+    else
+        legend({'M1', 'M2', 'M3'}, 'Location', 'northeast');
+    end
+end
+
+% ===================================================================
+%% ======= PLOT 4/4: 3D Scatter of Selfishness vs Weight Ratios ======
+% ===================================================================
+
+% === Setup ===
+baseFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
+weightFolders = dir(baseFolder);
+weightFolders = weightFolders([weightFolders.isdir]); 
+weightFolders = weightFolders(~ismember({weightFolders.name}, {'.', '..'}));
+
+dataStruct = struct('exp', {}, 'strategy', {}, 'WaWb', {}, 'WcWb', {}, ...
+                    'selfishPercent', {}, 'folder', {}, 'Wb', {});  % Include Wb
+
+for w = 1:length(weightFolders)
+    folderName = weightFolders(w).name;
+    weightPattern = regexp(folderName, 'Wa(\d+)Wb(\d+)Wc(\d+)', 'tokens');
+    if isempty(weightPattern), continue; end
+
+    weights = str2double(weightPattern{1});
+    Wa = weights(1); Wb = weights(2); Wc = weights(3);
+    if Wb == 0, continue; end  % avoid division by zero
+
+    WaWb = Wa / Wb;
+    WcWb = Wc / Wb;
+
+    fullPath = fullfile(baseFolder, folderName);
+    excelFiles = dir(fullfile(fullPath, '*.xlsx'));
+
+    for f = 1:length(excelFiles)
+        fileName = upper(excelFiles(f).name);
+        expMatch = regexp(fileName, '(EXP\d+)_([A-Z]+)', 'tokens');
+        if isempty(expMatch), continue; end
+
+        expID = expMatch{1}{1};
+        strategy = expMatch{1}{2};
+        if ~ismember(strategy, {'SELFISH', 'GLOBAL', 'HOMEO'}), continue; end
+
+        Tdata = readtable(fullfile(fullPath, excelFiles(f).name));
+        if ~all(ismember({'final_Wb_M1', 'final_Wb_M2'}, Tdata.Properties.VariableNames)), continue; end
+
+        avgSelfish = mean([Tdata.final_Wb_M1 == 0, Tdata.final_Wb_M2 == 0], 'all') * 100;
+
+        % Store result
+        dataStruct(end+1).exp = expID;
+        dataStruct(end).strategy = strategy;
+        dataStruct(end).WaWb = WaWb;
+        dataStruct(end).WcWb = WcWb;
+        dataStruct(end).selfishPercent = avgSelfish;
+        dataStruct(end).folder = folderName;
+        dataStruct(end).Wb = Wb;  % Now Wb is defined
+    end
+end
+
+% === Convert and Add Wa/Wc ===
+if isempty(dataStruct)
+    error('No valid data found.');
+end
+
+T = struct2table(dataStruct);
+T.WaWc = T.WaWb ./ T.WcWb;  % Compute Wa/Wc ratio
+
+strategies = {'SELFISH', 'GLOBAL', 'HOMEO'};
+shapes = {'o', 's', '^'};
+colors = lines(numel(strategies));
+uniqueExps = unique(T.exp);
+
+% === PLOT 1: 3D Scatter Subplots (Wa/Wb vs Wc/Wb) ===
+figure('Name', '3D Scatter: Selfishness vs Wa/Wb & Wc/Wb');
+for i = 1:min(4, numel(uniqueExps))
+    subplot(2, 2, i);
+    hold on; grid on; view(45, 25);
+    title(sprintf('Experiment %s', uniqueExps{i}));
+    xlabel('Wa / Wb'); ylabel('Wc / Wb'); zlabel('% Time Being Selfish');
+
+    for s = 1:length(strategies)
+        stratData = T(strcmp(T.strategy, strategies{s}) & strcmp(T.exp, uniqueExps{i}), :);
+        scatter3(stratData.WaWb, stratData.WcWb, stratData.selfishPercent, ...
+            80, colors(s, :), shapes{s}, 'filled');
+    end
+    legend(strategies, 'Location', 'best');
+end
+
+% === PLOT 2: 3D Scatter (Wa/Wc vs Wb) ===
+figure('Name', '3D Scatter: Selfishness vs Wa/Wc & Wb');
+for i = 1:min(4, numel(uniqueExps))
+    subplot(2, 2, i);
+    hold on; grid on; view(45, 25);
+    title(sprintf('Experiment %s', uniqueExps{i}));
+    xlabel('Wa / Wc'); ylabel('Wb'); zlabel('% Time Being Selfish');
+
+    for s = 1:length(strategies)
+        stratData = T(strcmp(T.strategy, strategies{s}) & strcmp(T.exp, uniqueExps{i}), :);
+        scatter3(stratData.WaWc, stratData.Wb, stratData.selfishPercent, ...
+            80, colors(s, :), shapes{s}, 'filled');
+    end
+    legend(strategies, 'Location', 'best');
+end
+
+% === PLOT 3: 2D Scatter Selfishness vs Wa/Wb ===
+figure('Name', '2D Scatter: Selfishness vs Wa/Wb');
+for i = 1:min(4, numel(uniqueExps))
+    subplot(2, 2, i);
+    hold on; grid on;
+    title(sprintf('Experiment %s', uniqueExps{i}));
+    xlabel('Wa / Wb'); ylabel('% Time Being Selfish');
+
+    for s = 1:length(strategies)
+        stratData = T(strcmp(T.strategy, strategies{s}) & strcmp(T.exp, uniqueExps{i}), :);
+        scatter(stratData.WaWb, stratData.selfishPercent, ...
+            80, shapes{s}, 'MarkerFaceColor', colors(s, :), 'MarkerEdgeColor', colors(s, :));
+    end
+    legend(strategies, 'Location', 'best');
+end
+
+% === PLOT 4: 2D Scatter Selfishness vs Wc/Wb ===
+figure('Name', '2D Scatter: Selfishness vs Wc/Wb');
+for i = 1:min(4, numel(uniqueExps))
+    subplot(2, 2, i);
+    hold on; grid on;
+    title(sprintf('Experiment %s', uniqueExps{i}));
+    xlabel('Wc / Wb'); ylabel('% Time Being Selfish');
+
+    for s = 1:length(strategies)
+        stratData = T(strcmp(T.strategy, strategies{s}) & strcmp(T.exp, uniqueExps{i}), :);
+        scatter(stratData.WcWb, stratData.selfishPercent, ...
+            80, shapes{s}, 'MarkerFaceColor', colors(s, :), 'MarkerEdgeColor', colors(s, :));
+    end
+    legend(strategies, 'Location', 'best');
+end
+
+
+
+%{
 % ===================================================================
 %% ======= PLOT 3/3: beingSelfish dynamics under weight conditions 
 % ===================================================================
@@ -622,90 +825,7 @@ for e = 1:numel(expList)
 end
 
 sgtitle('Being Selfish vs Weight Ratio Across Strategies and Experiments');
-
-% ===================================================================
-%% ======= PLOT 4/4: 3D Scatter of Selfishness vs Weight Ratios ======
-% ===================================================================
-
-% === Setup ===
-baseFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons';
-weightFolders = dir(baseFolder);
-weightFolders = weightFolders([weightFolders.isdir]); 
-weightFolders = weightFolders(~ismember({weightFolders.name}, {'.', '..'}));
-
-dataStruct = struct('exp', {}, 'strategy', {}, 'WaWb', {}, 'WcWb', {}, 'selfishPercent', {}, 'folder', {});
-
-for w = 1:length(weightFolders)
-    folderName = weightFolders(w).name;
-    weightPattern = regexp(folderName, 'Wa(\d+)Wb(\d+)Wc(\d+)', 'tokens');
-    if isempty(weightPattern), continue; end
-
-    weights = str2double(weightPattern{1});
-    Wa = weights(1); Wb = weights(2); Wc = weights(3);
-    if Wb == 0, continue; end  % avoid division by zero
-
-    WaWb = Wa / Wb;
-    WcWb = Wc / Wb;
-
-    fullPath = fullfile(baseFolder, folderName);
-    excelFiles = dir(fullfile(fullPath, '*.xlsx'));
-
-    for f = 1:length(excelFiles)
-        fileName = upper(excelFiles(f).name);
-        expMatch = regexp(fileName, '(EXP\d+)_([A-Z]+)', 'tokens');
-        if isempty(expMatch), continue; end
-
-        expID = expMatch{1}{1};
-        strategy = expMatch{1}{2};
-        if ~ismember(strategy, {'SELFISH', 'GLOBAL', 'HOMEO'}), continue; end
-
-        T = readtable(fullfile(fullPath, excelFiles(f).name));
-        if ~all(ismember({'final_Wb_M1', 'final_Wb_M2'}, T.Properties.VariableNames)), continue; end
-
-        avgSelfish = mean([T.final_Wb_M1 == 0, T.final_Wb_M2 == 0], 'all') * 100;
-
-        % Store result
-        dataStruct(end+1).exp = expID;
-        dataStruct(end).strategy = strategy;
-        dataStruct(end).WaWb = WaWb;
-        dataStruct(end).WcWb = WcWb;
-        dataStruct(end).selfishPercent = avgSelfish;
-        dataStruct(end).folder = folderName;
-    end
-end
-
-% === Convert and Plot ===
-if isempty(dataStruct)
-    error('No valid data found.');
-end
-
-T = struct2table(dataStruct);
-strategies = {'SELFISH', 'GLOBAL', 'HOMEO'};
-shapes = {'o', 's', '^'};
-colors = lines(numel(strategies));
-
-figure('Name', '3D Scatter: Selfishness vs Weight Ratios');
-hold on;
-grid on;
-view(45, 25);
-xlabel('Wa / Wb');
-ylabel('Wc / Wb');
-zlabel('% Time Being Selfish');
-title('Selfishness by Control Strategy and Weight Ratios');
-
-for s = 1:length(strategies)
-    strat = strategies{s};
-    shape = shapes{s};
-    color = colors(s, :);
-    stratData = T(strcmp(T.strategy, strat), :);
-
-    scatter3(stratData.WaWb, stratData.WcWb, stratData.selfishPercent, ...
-        80, color, shape, 'filled', 'DisplayName', strat);
-end
-
-legend('Location', 'best');
-
-
+%}
 
 %{
 % ===================================================================
