@@ -518,6 +518,8 @@ figure('Name','Intra-file shape diversity');
 hold on; axis equal; grid on;
 title('All Final Positions (≥5s 0-actuation) in One File');
 xlabel('X'); ylabel('Y');
+set(gca, 'XTickLabel', []);
+set(gca, 'YTickLabel', []);
 colors = lines(length(starts));
 
 for z = 1:length(starts)
@@ -562,6 +564,8 @@ figure('Name','Inter-file shape comparison');
 hold on; axis equal; grid on;
 title('Best Final Position Across Files');
 xlabel('X'); ylabel('Y');
+set(gca, 'XTickLabel', []);
+set(gca, 'YTickLabel', []);
 colors = lines(length(files));
 
 for f = 1:length(files)
