@@ -1,7 +1,7 @@
 clear; clc;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb033Wc0.33\target_air_500';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %{
@@ -494,7 +494,7 @@ end
 
 % === Plot 3.a: Intra-File Diversity of Success Shapes ===
 
-file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx'; % <-- Update this
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_NEIGHBOUR.xlsx'; % <-- Update this
 T = readtable(file);
 
 % Define spring connections and drawing parameters
@@ -547,13 +547,14 @@ for z = 1:length(starts)
     end
 end
 
+
 %% MAY NEED COMMENTING OFF IF WANT ACTUATION SIGNAL TO WORK
 % === Plot 3.b: Inter-File Comparison of Best Shapes ===
 
 files = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb033Wc0.33\EXP1_LOCAL.xlsx',
     'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb0.33Wc1\EXP1_LOCAL.xlsx'
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc3\EXP2_NEIGHBOUR.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_NEIGHBOUR.xlsx'
 }; % <-- Add your files here
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
@@ -567,6 +568,9 @@ xlabel('X'); ylabel('Y');
 set(gca, 'XTickLabel', []);
 set(gca, 'YTickLabel', []);
 colors = lines(length(files));
+
+legend_entries = cell(1, length(files));
+plot_handles = gobjects(1, length(files));
 
 for f = 1:length(files)
     T = readtable(files{f});
@@ -600,23 +604,49 @@ for f = 1:length(files)
     by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
 
     for j = 1:size(spring_pairs,1)
-        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
-             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
-             '-', 'Color', colors(f,:), 'LineWidth', 1.5);
+        if j == 1
+            plot_handles(f) = plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+                                   [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
+                                   '-', 'Color', colors(f,:), 'LineWidth', 1.5);
+        else
+            plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+                 [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
+                 '-', 'Color', colors(f,:), 'LineWidth', 1.5);
+        end
     end
+
     for j = 1:5
         fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
              colors(f,:), 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
     end
+
+    % Extract experiment type from filename
+    file_lower = lower(files{f});
+    if contains(file_lower, 'local')
+        legend_entries{f} = 'LOCAL';
+    elseif contains(file_lower, 'neighbour')
+        legend_entries{f} = 'NEIGHBOUR';
+    elseif contains(file_lower, 'selfish')
+        legend_entries{f} = 'SELFISH';
+    elseif contains(file_lower, 'global only')
+        legend_entries{f} = 'GLOBAL ONLY';
+    elseif contains(file_lower, 'global')
+        legend_entries{f} = 'GLOBAL';
+    else
+        legend_entries{f} = 'UNKNOWN';
+    end
 end
 
+legend(plot_handles, legend_entries, 'Location', 'best');
+
+%}
 
 % ==================================================================
 %% ===== Plot 4/5 Actuation Signals Over Time (By EXP, One Strategy)
 % ==================================================================
 
-% === Define strategy group to display ===
-strategyToPlot = 'LOCAL';  % <<== input desired strategy 
+% === Define strategy group to display === CHECH FILE NAME TOP OF CODE
+strategyToPlot = 'NEIGHBOUR_ONLY';  % <<== input desired strategy 
 
 % === Experiment names ===
 expList = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
@@ -652,6 +682,17 @@ for e = 1:nExps
             % Read data
             T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
             t = T.current_time;
+
+            %% DEBUG 
+            %{
+            if strcmp(expName, 'EXP1')
+                figure('Name','Raw Data EXP1 — M1');
+                plot(t, m1, '-o'); grid on;
+                title('Raw M1_actuation_final vs Time — EXP1');
+                xlabel('Time'); ylabel('M1 Value');
+            end
+            %}
+
             m1 = T.M1_actuation_final;
             m2 = T.M2_actuation_final;
             m3 = T.M3_actuation_final;
