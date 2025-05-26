@@ -1,4 +1,4 @@
-clear; clc;
+clear; clc; close all;
 
 % Folder with your Excel files
 dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33';
@@ -492,17 +492,25 @@ end
 %% ======= PLOT 3/5: Successful Shapes Comparisons Within/Between Files
 % ========================================================================
 
-% === Plot 3.a: Intra-File Diversity of Success Shapes ===
-
-file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_NEIGHBOUR.xlsx'; % <-- Update this
+% === Input file ===
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_GLOBAL.xlsx'; % <-- Update this
 T = readtable(file);
 
-% Define spring connections and drawing parameters
+% === Extract strategy name from filename ===
+[~, filename, ~] = fileparts(file);
+tokens = regexp(filename, 'EXP\d+_(\w+)', 'tokens');
+if ~isempty(tokens)
+    strategyName = tokens{1}{1};
+else
+    strategyName = 'Unknown Strategy';
+end
+
+% === Define spring connections and drawing parameters ===
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
 theta = linspace(0, 2*pi, 20);
 radius_body = 0.05;
 
-% Extract actuation data
+% === Extract actuation data ===
 m1 = T.M1_actuation_final;
 m2 = T.M2_actuation_final;
 m3 = T.M3_actuation_final;
@@ -513,15 +521,16 @@ d = diff([0; isZeroAll; 0]);
 starts = find(d == 1);
 ends = find(d == -1) - 1;
 
-% Setup figure
-figure('Name','Intra-file shape diversity');
+% === Setup figure ===
+figure('Name', ['Intra-file shape diversity — ' strategyName]);
 hold on; axis equal; grid on;
-title('All Final Positions (≥5s 0-actuation) in One File');
+title(['All Final Positions (≥5s 0-actuation) — Strategy: ' strategyName]);
 xlabel('X'); ylabel('Y');
 set(gca, 'XTickLabel', []);
 set(gca, 'YTickLabel', []);
 colors = lines(length(starts));
 
+% === Plot each qualifying shape snapshot ===
 for z = 1:length(starts)
     duration = t(ends(z)) - t(starts(z));
     if duration < 5, continue; end
@@ -536,26 +545,35 @@ for z = 1:length(starts)
     bx = bx - bx(1); bx = bx - min(bx); if max(bx) > 0, bx = bx / max(bx) * 2; end
     by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
 
+    % Draw springs
     for j = 1:size(spring_pairs,1)
         plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
              [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
              '-', 'Color', colors(z,:), 'LineWidth', 1.2);
     end
+
+    % Draw bodies
     for j = 1:5
-        fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
-             colors(z,:), 'FaceAlpha', 0.5, 'EdgeColor', 'k', 'LineWidth', 0.3);
+        fill(bx(j) + radius_body*cos(theta), ...
+             by(j) + radius_body*sin(theta), ...
+             colors(z,:), 'FaceAlpha', 0.5, ...
+             'EdgeColor', 'k', 'LineWidth', 0.3);
     end
 end
+
+% === Add legend for strategy name ===
+%legend(strategyName, 'Location', 'northeastoutside');
+
 
 
 %% MAY NEED COMMENTING OFF IF WANT ACTUATION SIGNAL TO WORK
 % === Plot 3.b: Inter-File Comparison of Best Shapes ===
 
 files = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_NEIGHBOUR.xlsx',
     'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc3\EXP2_NEIGHBOUR.xlsx',
     'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_NEIGHBOUR.xlsx'
-}; % <-- Add your files here
+};
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
 theta = linspace(0, 2*pi, 20);
@@ -569,8 +587,8 @@ set(gca, 'XTickLabel', []);
 set(gca, 'YTickLabel', []);
 colors = lines(length(files));
 
-legend_entries = cell(1, length(files));
-plot_handles = gobjects(1, length(files));
+legend_entries = {};
+plot_handles = [];
 
 for f = 1:length(files)
     T = readtable(files{f});
@@ -592,7 +610,12 @@ for f = 1:length(files)
             idx = ends(z);
         end
     end
-    if isnan(idx), continue; end
+    if isnan(idx)
+        continue;
+    end
+
+    % Assign color only for valid entries
+    color = colors(f, :);
 
     bx = [T.body1_pos_x(idx), T.body2_pos_x(idx), T.body3_pos_x(idx), ...
           T.body4_pos_x(idx), T.body5_pos_x(idx)];
@@ -603,41 +626,45 @@ for f = 1:length(files)
     bx = bx - bx(1); bx = bx - min(bx); if max(bx) > 0, bx = bx / max(bx) * 2; end
     by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
 
-    for j = 1:size(spring_pairs,1)
-        if j == 1
-            plot_handles(f) = plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
-                                   [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
-                                   '-', 'Color', colors(f,:), 'LineWidth', 1.5);
-        else
-            plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
-                 [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
-                 '-', 'Color', colors(f,:), 'LineWidth', 1.5);
-        end
+    % Plot springs and store handle for legend
+    h = plot([bx(spring_pairs(1,1)), bx(spring_pairs(1,2))], ...
+             [by(spring_pairs(1,1)), by(spring_pairs(1,2))], ...
+             '-', 'Color', color, 'LineWidth', 1.5);
+    plot_handles(end+1) = h; %#ok<*SAGROW>
+
+    for j = 2:size(spring_pairs,1)
+        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
+             '-', 'Color', color, 'LineWidth', 1.5);
     end
 
     for j = 1:5
         fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
-             colors(f,:), 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
+             color, 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
     end
 
-    % Extract experiment type from filename
+    % Extract experiment type from filename (case-insensitive, more specific first!)
     file_lower = lower(files{f});
-    if contains(file_lower, 'local')
-        legend_entries{f} = 'LOCAL';
-    elseif contains(file_lower, 'neighbour')
-        legend_entries{f} = 'NEIGHBOUR';
-    elseif contains(file_lower, 'selfish')
-        legend_entries{f} = 'SELFISH';
-    elseif contains(file_lower, 'global only')
-        legend_entries{f} = 'GLOBAL ONLY';
+    if contains(file_lower, 'global_only')
+        legend_entries{end+1} = 'GLOBAL\_ONLY';
     elseif contains(file_lower, 'global')
-        legend_entries{f} = 'GLOBAL';
+        legend_entries{end+1} = 'GLOBAL';
+    elseif contains(file_lower, 'local')
+        legend_entries{end+1} = 'LOCAL';
+    elseif contains(file_lower, 'neighbour')
+        legend_entries{end+1} = 'NEIGHBOUR';
+    elseif contains(file_lower, 'selfish')
+        legend_entries{end+1} = 'SELFISH';
+    elseif contains(file_lower, 'homeo')
+        legend_entries{end+1} = 'HOMEO';
     else
-        legend_entries{f} = 'UNKNOWN';
+        legend_entries{end+1} = 'UNKNOWN';
     end
 end
 
+% Only show legend for valid plotted entries
 legend(plot_handles, legend_entries, 'Location', 'best');
+
 
 %}
 
@@ -646,7 +673,7 @@ legend(plot_handles, legend_entries, 'Location', 'best');
 % ==================================================================
 
 % === Define strategy group to display === CHECH FILE NAME TOP OF CODE
-strategyToPlot = 'NEIGHBOUR_ONLY';  % <<== input desired strategy 
+strategyToPlot = 'SELFISH';  % <<== input desired strategy 
 
 % === Experiment names ===
 expList = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
@@ -678,20 +705,12 @@ for e = 1:nExps
         fname = upper(files(i).name);
 
         % Check if this file belongs to the current EXP and strategy group
-        if contains(fname, expName) && contains(fname, upper(strategyToPlot))
+        pattern = [expName '_' upper(strategyToPlot) '.XLSX'];
+        if strcmp(fname, pattern)
+
             % Read data
             T = readtable(fullfile(files(i).folder, files(i).name), 'Sheet', 'Tabelle1');
             t = T.current_time;
-
-            %% DEBUG 
-            %{
-            if strcmp(expName, 'EXP1')
-                figure('Name','Raw Data EXP1 — M1');
-                plot(t, m1, '-o'); grid on;
-                title('Raw M1_actuation_final vs Time — EXP1');
-                xlabel('Time'); ylabel('M1 Value');
-            end
-            %}
 
             m1 = T.M1_actuation_final;
             m2 = T.M2_actuation_final;
