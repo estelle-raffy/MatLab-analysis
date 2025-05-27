@@ -287,6 +287,17 @@ for i = 1:length(files)
               T.body4_pos_x(zeroEndIndex), T.body5_pos_x(zeroEndIndex)];
         by = [T.body1_pos_y(zeroEndIndex), T.body2_pos_y(zeroEndIndex), T.body3_pos_y(zeroEndIndex), ...
               T.body4_pos_y(zeroEndIndex), T.body5_pos_y(zeroEndIndex)];
+
+        % ==== Convert back to Python coordinates ====
+        bodyX_current_pos_x = bx + 300;
+        bodyX_current_pos_y = (-1) * by + 550;
+        
+        % ==== Display in MATLAB command window ====
+        fprintf('--- SUCCESS: %s (Group: %s) ---\n', expName, groupNames{groupIdx});
+        for b = 1:5
+            fprintf('Body %d: (%.2f, %.2f)\n', b, bodyX_current_pos_x(b), bodyX_current_pos_y(b));
+        end
+
     else
         % ==== Failed: fallback to final timestep, use grey color ====
         bx = [T.body1_pos_x(end), T.body2_pos_x(end), T.body3_pos_x(end), ...
@@ -565,14 +576,13 @@ end
 %legend(strategyName, 'Location', 'northeastoutside');
 
 
-
+%{
 %% MAY NEED COMMENTING OFF IF WANT ACTUATION SIGNAL TO WORK
 % === Plot 3.b: Inter-File Comparison of Best Shapes ===
 
 files = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_NEIGHBOUR.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc3\EXP2_NEIGHBOUR.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_NEIGHBOUR.xlsx'
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\EXP3_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\EXP3_NEIGHBOUR.xlsx'
 };
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
@@ -646,7 +656,7 @@ for f = 1:length(files)
     % Extract experiment type from filename (case-insensitive, more specific first!)
     file_lower = lower(files{f});
     if contains(file_lower, 'global_only')
-        legend_entries{end+1} = 'GLOBAL\_ONLY';
+        legend_entries{end+1} = 'GLOBAL_ONLY';
     elseif contains(file_lower, 'global')
         legend_entries{end+1} = 'GLOBAL';
     elseif contains(file_lower, 'local')
@@ -734,6 +744,95 @@ for e = 1:nExps
     end
 end
 
+
+% ===============================================================================
+%% ======= PLOTS 5/5 INTERNAL DYNAMICS : Selfishness vs Control strategies ======
+% ===============================================================================
+
+% File paths (replace these with your actual paths)
+filePaths = {
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_HOMEO.xlsx'
+};
+
+% Strategy keywords
+strategies = {'NEIGHBOUR', 'SELFISH', 'GLOBAL', 'HOMEO'};
+
+% Define consistent colors
+color_localM1 = [0.4, 0.76, 0.99];  % Light blue
+color_finalM1 = [0.0, 0.2, 0.8];    % Dark blue
+color_localM2 = [1.0, 0.6, 0.0];    % Orange
+color_finalM2 = [0.8, 0.1, 0.1];    % Red
+
+for i = 1:length(filePaths)
+    % Load data
+    data = readtable(filePaths{i});
+    
+    % Extract relevant columns
+    time      = data.current_time;
+    localM1   = data.local_Wb_M1;
+    localM2   = data.local_Wb_M2;
+    finalM1   = data.final_Wb_M1;
+    finalM2   = data.final_Wb_M2;
+    
+    % Unique time steps
+    unique_times = unique(time);
+    
+    % Preallocate vectors
+    mean_localM1 = zeros(size(unique_times));
+    mean_localM2 = zeros(size(unique_times));
+    mean_finalM1 = zeros(size(unique_times));
+    mean_finalM2 = zeros(size(unique_times));
+    
+    % Compute mean values per time point
+    for j = 1:length(unique_times)
+        t = unique_times(j);
+        idx = time == t;
+        
+        mean_localM1(j) = mean(localM1(idx));
+        mean_localM2(j) = mean(localM2(idx));
+        mean_finalM1(j) = mean(finalM1(idx));
+        mean_finalM2(j) = mean(finalM2(idx));
+    end
+    
+    % Create figure for this strategy
+    fig = figure('Name', ['Wb Curves - File ' num2str(i)], 'NumberTitle', 'off');
+    t = tiledlayout(2,1);
+    
+    % Extract strategy name from filename
+    [~, fname, ~] = fileparts(filePaths{i});
+    strategy_name = 'Unknown Strategy';
+    for s = 1:length(strategies)
+        if ~isempty(regexp(upper(fname), ['(^|[_-])' strategies{s} '($|[_-])'], 'once'))
+            strategy_name = strategies{s};
+            break;
+        end
+    end
+    t.Title.String = ['Strategy: ' strategy_name];
+    
+    % ---- SUBPLOT 1: M1 ----
+    nexttile;
+    plot(unique_times, mean_localM1, '-', 'Color', color_localM1, 'LineWidth', 1.8, 'DisplayName', 'Local Wb M1');
+    hold on;
+    plot(unique_times, mean_finalM1, '-', 'Color', color_finalM1, 'LineWidth', 1.8, 'DisplayName', 'Final Wb M1');
+    hold off;
+    ylabel('Wb M1');
+    legend('Location', 'best');
+    grid on;
+
+    % ---- SUBPLOT 2: M2 ----
+    nexttile;
+    plot(unique_times, mean_localM2, '-', 'Color', color_localM2, 'LineWidth', 1.8, 'DisplayName', 'Local Wb M2');
+    hold on;
+    plot(unique_times, mean_finalM2, '-', 'Color', color_finalM2, 'LineWidth', 1.8, 'DisplayName', 'Final Wb M2');
+    hold off;
+    xlabel('Time');
+    ylabel('Wb M2');
+    legend('Location', 'best');
+    grid on;
+end
+
+%{
 % ===================================================================
 %% ======= PLOTS 5/5: 3D Scatter of Selfishness vs Weight Ratios ======
 % ===================================================================
@@ -863,7 +962,7 @@ for i = 1:min(4, numel(uniqueExps))
     end
     legend(strategies, 'Location', 'best');
 end
-
+%}
 
 %{
 % ===================================================================
