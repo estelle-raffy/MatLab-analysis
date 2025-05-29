@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %{
@@ -22,8 +22,10 @@ end
 %}
 
 % Define strategy groups
-strategyGroups = {'LOCAL', 'NEIGHBOUR_ONLY','NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL', 'HOMEO'};
-groupNames = {'Local', 'Neigh only', 'Neighbour', 'Selfish', 'M3 only', 'Global Mod', 'Homeo'};
+strategyGroups = {'LOCAL','NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL', 'HOMEO'};
+groupNames = {'Local', 'Neighbour', 'Selfish', 'M3 only', 'Global Mod', 'Homeo'};
+%strategyGroups = {'LOCAL', 'NEIGHBOUR_ONLY','NEIGHBOUR','SELFISH', 'GLOBAL_ONLY', 'GLOBAL', 'HOMEO'};
+%groupNames = {'Local', 'Neigh only', 'Neighbour', 'Selfish', 'M3 only', 'Global Mod', 'Homeo'};
 numGroups = numel(strategyGroups);
 strategyColors = lines(numGroups);
 
@@ -504,7 +506,7 @@ end
 % ========================================================================
 
 % === Input file ===
-file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_GLOBAL.xlsx'; % <-- Update this
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx'; % <-- Update this
 T = readtable(file);
 
 % === Extract strategy name from filename ===
@@ -581,8 +583,8 @@ end
 % === Plot 3.b: Inter-File Comparison of Best Shapes ===
 
 files = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\EXP3_GLOBAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\EXP3_NEIGHBOUR.xlsx'
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc1\Thresholds_2250-1800\EXP3_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc1\Thresholds_2250-1800\EXP3_HOMEO.xlsx'
 };
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
@@ -683,7 +685,7 @@ legend(plot_handles, legend_entries, 'Location', 'best');
 % ==================================================================
 
 % === Define strategy group to display === CHECH FILE NAME TOP OF CODE
-strategyToPlot = 'SELFISH';  % <<== input desired strategy 
+strategyToPlot = 'LOCAL';  % <<== input desired strategy 
 
 % === Experiment names ===
 expList = {'EXP1', 'EXP2', 'EXP3', 'EXP4'};
@@ -751,8 +753,8 @@ end
 
 % File paths (replace these with your actual paths)
 filePaths = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_GLOBAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_HOMEO.xlsx'
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_NEIGHBOUR.xlsx'
 };
 
 % Strategy keywords
@@ -830,6 +832,194 @@ for i = 1:length(filePaths)
     ylabel('Wb M2');
     legend('Location', 'best');
     grid on;
+end
+
+
+% ========================================================================
+%% PLOT 6/7: Intra-Strategy — Area Distribution as Dots
+% ========================================================================
+
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_SELFISH.xlsx';
+T = readtable(file);
+
+spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
+theta = linspace(0, 2*pi, 20);
+radius_body = 0.05;
+shapes = {};
+
+m1 = T.M1_actuation_final;
+m2 = T.M2_actuation_final;
+m3 = T.M3_actuation_final;
+t  = T.current_time;
+
+isZeroAll = (m1 == 0) & (m2 == 0) & (m3 == 0);
+d = diff([0; isZeroAll; 0]);
+starts = find(d == 1);
+ends = find(d == -1) - 1;
+
+for z = 1:length(starts)
+    duration = t(ends(z)) - t(starts(z));
+    if duration < 5, continue; end
+
+    idx = ends(z);
+    bx = [T.body1_pos_x(idx), T.body2_pos_x(idx), T.body3_pos_x(idx), T.body4_pos_x(idx), T.body5_pos_x(idx)];
+    by = [T.body1_pos_y(idx), T.body2_pos_y(idx), T.body3_pos_y(idx), T.body4_pos_y(idx), T.body5_pos_y(idx)];
+
+    % Normalize
+    bx = bx - bx(1); bx = bx - min(bx); if max(bx) > 0, bx = bx / max(bx) * 2; end
+    by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
+
+    shapes{end+1} = [bx(:), by(:)];
+end
+
+% Compute pairwise Procrustes distances: for each pair of shapes get d
+% the smaller d, the more similar the shapes (0=identical shapes)
+n = numel(shapes);
+D = zeros(n);
+for i = 1:n
+    for j = i+1:n
+        [d, ~] = procrustes(shapes{i}, shapes{j});
+        D(i,j) = d; % store distance in Matrix D
+        D(j,i) = d;
+        fprintf('INTRA - Procrustes distance between shape %d and %d: %.4f\n', i, j, d);
+    end
+end
+
+% Cluster shapes: start with one shape, group with next best similar 
+% and so on, cutoff at a certain 'is different threshold'
+Z = linkage(squareform(D), 'average'); % group similar shapes, linkage looks at distance matrix and groups closest first, makes a 'tree'
+T_clust = cluster(Z, 'cutoff', 0.01, 'criterion', 'distance'); % T_clust tells what cluster belongs to: look at tree and use cutoff to sort into clusters
+% shape below it get together, above belong to diff clusters 
+
+% Mean shape per cluster: take shape as reference, make shape fit as
+% possible (rotate/resize using Procruste) and get the mean of all of them. 
+unique_clusters = unique(T_clust);
+mean_shapes = cell(length(unique_clusters), 1);
+for k = 1:length(unique_clusters)
+    idxs = find(T_clust == unique_clusters(k));
+    ref = shapes{idxs(1)};
+    aligned = zeros(length(idxs), size(ref,1), size(ref,2)); % save shapes in aligned array
+    for i = 1:length(idxs)
+        [~, Z] = procrustes(ref, shapes{idxs(i)});
+        aligned(i,:,:) = Z;
+    end
+    mean_shapes{k} = squeeze(mean(aligned, 1));
+end
+
+% Plot mean shapes
+figure;
+hold on; axis equal; grid on;
+title('Morphological Clusters — Single File');
+colors = lines(length(mean_shapes));
+for i = 1:length(mean_shapes)
+    shape = mean_shapes{i};
+    bx = shape(:,1) + i * 3;  % space shapes out
+    by = shape(:,2);
+    for j = 1:size(spring_pairs,1)
+        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], '-', 'Color', colors(i,:), 'LineWidth', 1.5);
+    end
+    for j = 1:5
+        fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
+             colors(i,:), 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
+    end
+end
+
+
+
+% ========================================================================
+%% PLOT 7/7: Inter-Strategy Shape Diversity Summary (by Mean Area)
+% ========================================================================
+
+files = {
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb033Wc0.33\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc0.33\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb0.33Wc1\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc1\EXP1_LOCAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx'
+};
+
+spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
+theta = linspace(0, 2*pi, 20);
+radius_body = 0.05;
+shapes = {};
+
+for f = 1:length(files)
+    T = readtable(files{f});
+    m1 = T.M1_actuation_final;
+    m2 = T.M2_actuation_final;
+    m3 = T.M3_actuation_final;
+    t  = T.current_time;
+
+    isZeroAll = (m1 == 0) & (m2 == 0) & (m3 == 0);
+    d = diff([0; isZeroAll; 0]);
+    starts = find(d == 1);
+    ends = find(d == -1) - 1;
+
+    for z = 1:length(starts)
+        duration = t(ends(z)) - t(starts(z));
+        if duration < 5, continue; end
+
+        idx = ends(z);
+        bx = [T.body1_pos_x(idx), T.body2_pos_x(idx), T.body3_pos_x(idx), T.body4_pos_x(idx), T.body5_pos_x(idx)];
+        by = [T.body1_pos_y(idx), T.body2_pos_y(idx), T.body3_pos_y(idx), T.body4_pos_y(idx), T.body5_pos_y(idx)];
+
+        % Normalize
+        bx = bx - bx(1); bx = bx - min(bx); if max(bx) > 0, bx = bx / max(bx) * 2; end
+        by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
+
+        shapes{end+1} = [bx(:), by(:)];
+    end
+end
+
+% Compute pairwise Procrustes distances
+n = numel(shapes);
+D = zeros(n);
+for i = 1:n
+    for j = i+1:n
+        [d, ~] = procrustes(shapes{i}, shapes{j});
+        D(i,j) = d;
+        D(j,i) = d;
+        fprintf('INTER - Procrustes distance between shape %d and %d: %.4f\n', i, j, d);
+    end
+end
+
+% Cluster shapes
+Z = linkage(squareform(D), 'average');
+T_clust = cluster(Z, 'cutoff', 0.01, 'criterion', 'distance');
+
+% Mean shape per cluster
+unique_clusters = unique(T_clust);
+mean_shapes = cell(length(unique_clusters), 1);
+for k = 1:length(unique_clusters)
+    idxs = find(T_clust == unique_clusters(k));
+    ref = shapes{idxs(1)};
+    aligned = zeros(length(idxs), size(ref,1), size(ref,2));
+    for i = 1:length(idxs)
+        [~, Z] = procrustes(ref, shapes{idxs(i)});
+        aligned(i,:,:) = Z;
+    end
+    mean_shapes{k} = squeeze(mean(aligned, 1));
+end
+
+% Plot mean shapes
+figure;
+hold on; axis equal; grid on;
+title('Morphological Clusters — Across Files');
+colors = lines(length(mean_shapes));
+for i = 1:length(mean_shapes)
+    shape = mean_shapes{i};
+    bx = shape(:,1) + i * 3;
+    by = shape(:,2);
+    for j = 1:size(spring_pairs,1)
+        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], '-', 'Color', colors(i,:), 'LineWidth', 1.5);
+    end
+    for j = 1:5
+        fill(bx(j) + radius_body*cos(theta), by(j) + radius_body*sin(theta), ...
+             colors(i,:), 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
+    end
 end
 
 %{
