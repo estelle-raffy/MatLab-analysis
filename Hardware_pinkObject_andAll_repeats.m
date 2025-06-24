@@ -152,24 +152,42 @@ title('Mean Final Error Distance per Strategy');
 ylabel('Error Distance'); set(gca, 'XTickLabel', labels);
 xtickangle(45); grid on;
 
-%% === Plot 5: Error Over Time (Mean Curve) ===
+%% === Plot 5 (Fixed): Error Over Time (Mean Across Repeats Aligned by Time) ===
 figure(5); hold on;
-title('Error Over Time (Mean Across Reps)'); xlabel('Time'); ylabel('Error'); grid on;
+title('Error Over Time (Mean Across Reps)');
+xlabel('Elapsed Time (s)');
+ylabel('Error (Error_Distance)');
+grid on;
+
+% Define common time base (e.g. 200 points between 0 and max time)
+numPoints = 200;
 
 for i = 1:length(files)
     curves = [];
     for j = 1:5
         data = readtable(files{i}{j});
         data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
-        x = data.Elapsed_Time_s;
+        t = data.Elapsed_Time_s;
         y = data.Error_Distance;
-        curves(j,1:length(y)) = y(:)';
+
+        valid = ~isnan(t) & ~isnan(y);
+        t = t(valid);
+        y = y(valid);
+
+        % Interpolate to common time base
+        tNorm = linspace(min(t), max(t), numPoints);
+        yInterp = interp1(t, y, tNorm, 'linear', 'extrap');
+
+        curves(j,:) = yInterp;
     end
+
     meanCurve = mean(curves, 1, 'omitnan');
-    t = 1:length(meanCurve);
-    plot(t, meanCurve, 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', labels{i});
+    plot(tNorm, meanCurve, 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', labels{i});
 end
-legend('Location', 'best'); hold off;
+
+legend('Location', 'best');
+hold off;
+
 
 %% === Plot 6: Total Movement Distance (Mean Across 5) ===
 totalDistances = zeros(length(files),1);
