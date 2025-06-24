@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 %% === PARAMETERS ===
-numSamplePoints = 100;    % Resample trajectories to this length
+numSamplePoints = 200;    % Resample trajectories to this length
 distThreshold = 0.1;      % <-- Change this to control max allowed distance in clusters
 
 %% Load the Excel Files 
@@ -44,7 +44,10 @@ for i = 1:length(files)
         x = data.X_Position;
         y = data.Y_Position;
         
-        % Resample to same length using linear interpolation
+        % Resample to same length using linear interpolation 
+        % preserves general shape and allows comparisons 
+        % Draw a straight line between two known points and pick a value on it.
+        % if there are data missing cuz diff lengths >> estimate it 
         origLen = length(x);
         tOrig = linspace(0,1,origLen);
         tNew = linspace(0,1,numSamplePoints);
@@ -84,7 +87,16 @@ for i = 1:n
     end
 end
 
-%% === Plot 2: Heatmap of Pairwise Distances ===  dark = more different.
+% Procruste is computing the sum of squared distances between corresponding points.
+% This is normalized to give a shape difference value (d).
+
+
+%% === Plot 2: Heatmap of Pairwise Distances ===  compares trjectories >> dark = more different.
+% Each row and column is one strategy (e.g. LOCAL)
+% Each square (or "cell") at position (i, j) shows how different strategy i is from strategy j, based on the shape of their trajectories
+% The darker the square, the larger the distance → the more different the shapes are. Lighter = more similar.
+% The diagonal (where i = j) will always be zero distance (same file with itself) — that s the brightest.
+
 figure(2);
 imagesc(distMatrix);
 colorbar;
@@ -137,7 +149,7 @@ for c = 1:numClusters
     for k = 1:length(idx)
         [~, Zmat] = procrustes(ref, trajectories{idx(k)});
         aligned(:,:,k) = Zmat;
-        plot(Zmat(:,1), Zmat(:,2), 'Color', [clusterColors(c,:) 0.3]);
+        plot(Zmat(:,1), Zmat(:,2), 'Color', [clusterColors(c,:) 0.3], 'HandleVisibility', 'off');
     end
     
     meanShape = mean(aligned, 3);
@@ -243,6 +255,9 @@ grid on;
 
 
 %% === Plot 7: Productivity vs Cumulative Distance over Time === 
+% Cumulative distance traveled (x-axis)
+% Productivity (y-axis) = how much the error improved per unit of distance moved
+
 figure(7);
 numFiles = length(files);
 tiledlayout(numFiles, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
@@ -265,16 +280,28 @@ for i = 1:numFiles
         
         dx = diff(x);
         dy = diff(y);
-        stepDistances = sqrt(dx.^2 + dy.^2);
-        cumDist = [0; cumsum(stepDistances)];
+        stepDistances = sqrt(dx.^2 + dy.^2); % Euclidean distance at each step
+        cumDist = [0; cumsum(stepDistances)]; % Running total = cumulative distance
         
         deltaError = errorDist(1:end-1) - errorDist(2:end);
         deltaDist = stepDistances;
+        %change in error at each step: Positive value = error decreased = good / Negative value = error increased = bad
         
+
+        % How much did we improve the error per pixel moved?
+        % If it made big improvement in error while barely moving → high productivity
+        % If it moved a lot but error barely changed → low productivity
+        % If it moved and error worsened → negative productivity
         productivity = deltaError ./ deltaDist;
-        productivity(deltaDist == 0) = 0;
+        productivity(deltaDist == 0) = 0; %(steps with zero movement (e.g. stuck) are safely handled)
         
         plot(cumDist(2:end), productivity, 'Color', colors(i,:), 'LineWidth', 1.5);
+        % Compute and display mean productivity value
+        meanProdValue = mean(prodMat(:), 'omitnan');
+        text(0.98, 0.95, sprintf('Mean: %.3f', meanProdValue), ...
+        'Units', 'normalized', 'HorizontalAlignment', 'right', ...
+        'VerticalAlignment', 'top', 'FontSize', 9, 'Color', [0.2 0.2 0.2]);
+
         grid on;
         title(labels{i}, 'Interpreter', 'none');
         
