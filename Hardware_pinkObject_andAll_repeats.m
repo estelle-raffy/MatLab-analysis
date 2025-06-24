@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 %% === PARAMETERS ===
-numSamplePoints = 200;
+numSamplePoints = 200; % Resample trajectories to this length, ONLY USING error_distance from Python not Arduino! 
 distThreshold = 0.1;
 
 % === Set Folder Where Excel Files Are Stored ===
@@ -139,7 +139,7 @@ for i = 1:length(files)
     for j = 1:5
         data = readtable(files{i}{j});
         data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
-        ed = data.Error_Distance;
+        ed = data.Error_Distance; % error_distance not global error because nice to see time at rest before tensegrity moves!
         ed = ed(~isnan(ed));
         vals(j) = ed(end);
     end
@@ -242,3 +242,46 @@ for i = 1:length(files)
         set(gca,'XTickLabel',[]);
     end
 end
+
+%% === Plot 8: Final Motor Lengths (M0, M1, M2) ===
+
+% Preallocate matrix: [strategy x repetition x motor]
+numStrategies = length(files);
+numRepeats = 5;
+numMotors = 3;
+motorData = nan(numStrategies, numRepeats, numMotors);
+
+for i = 1:numStrategies
+    for j = 1:numRepeats
+        data = readtable(files{i}{j});
+        data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
+        
+        if all(ismember({'M0', 'M1', 'M2'}, data.Properties.VariableNames))
+            motorData(i,j,:) = [data.M0(1), data.M1(1), data.M2(1)];
+        else
+            warning('Missing M0/M1/M2 in file: %s', files{i}{j});
+        end
+    end
+end
+
+% Reshape data for boxplot: [row = sample, col = motor+strategy]
+motorDataReshaped = [];
+groupLabels = {};
+motorLabels = {'M0', 'M1', 'M2'};
+
+for m = 1:numMotors
+    for i = 1:numStrategies
+        vals = squeeze(motorData(i,:,m))';
+        motorDataReshaped = [motorDataReshaped; vals(:)];
+        groupLabels = [groupLabels; repmat({[labels{i} '-' motorLabels{m}]}, numRepeats, 1)];
+    end
+end
+
+% Create boxplot
+figure(8);
+boxplot(motorDataReshaped, groupLabels, 'LabelOrientation', 'inline');
+title('Final Motor Lengths per Strategy (M0, M1, M2)');
+ylabel('Final Length (mm or unit)');
+xtickangle(45);
+grid on;
+
