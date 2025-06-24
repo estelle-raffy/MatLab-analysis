@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 %% === PARAMETERS ===
-numSamplePoints = 200;    % Resample trajectories to this length
+numSamplePoints = 200;    % Resample trajectories to this length, ONLY USING error_distance from Python not Arduino! 
 distThreshold = 0.1;      % <-- Change this to control max allowed distance in clusters
 
 %% Load the Excel Files 
@@ -167,7 +167,7 @@ for i = 1:length(files)
     data = readtable(files{i});
     data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
 
-    if ismember('Error_Distance', data.Properties.VariableNames)
+    if ismember('Error_Distance', data.Properties.VariableNames) % error_distance not global error because nice to see time at rest before tensegrity moves!
         ed = data.Error_Distance;
         ed = ed(~isnan(ed));  % remove NaNs if any
         if ~isempty(ed)
@@ -254,10 +254,7 @@ grid on;
 
 
 
-%% === Plot 7: Productivity vs Cumulative Distance over Time === 
-% Cumulative distance traveled (x-axis)
-% Productivity (y-axis) = how much the error improved per unit of distance moved
-
+%% === Plot 7: Productivity vs Cumulative Distance over Time (Single File per Strategy) ===
 figure(7);
 numFiles = length(files);
 tiledlayout(numFiles, 1, 'Padding', 'compact', 'TileSpacing', 'compact');
@@ -285,26 +282,19 @@ for i = 1:numFiles
         
         deltaError = errorDist(1:end-1) - errorDist(2:end);
         deltaDist = stepDistances;
-        %change in error at each step: Positive value = error decreased = good / Negative value = error increased = bad
-        
-
-        % How much did we improve the error per pixel moved?
-        % If it made big improvement in error while barely moving → high productivity
-        % If it moved a lot but error barely changed → low productivity
-        % If it moved and error worsened → negative productivity
         productivity = deltaError ./ deltaDist;
-        productivity(deltaDist == 0) = 0; %(steps with zero movement (e.g. stuck) are safely handled)
+        productivity(deltaDist == 0) = 0; % Handle zero movement safely
         
         plot(cumDist(2:end), productivity, 'Color', colors(i,:), 'LineWidth', 1.5);
-        % Compute and display mean productivity value
-        meanProdValue = mean(prodMat(:), 'omitnan');
-        text(0.98, 0.95, sprintf('Mean: %.3f', meanProdValue), ...
-        'Units', 'normalized', 'HorizontalAlignment', 'right', ...
-        'VerticalAlignment', 'top', 'FontSize', 9, 'Color', [0.2 0.2 0.2]);
-
         grid on;
         title(labels{i}, 'Interpreter', 'none');
         
+        % === Nicely formatted text annotation (normalized coords)
+        meanProdValue = mean(productivity(~isnan(productivity) & ~isinf(productivity)), 'omitnan');
+        text(0.98, 0.95, sprintf('Mean: %.3f', meanProdValue), ...
+            'Units', 'normalized', 'HorizontalAlignment', 'right', ...
+            'VerticalAlignment', 'top', 'FontSize', 9, 'Color', [0.2 0.2 0.2]);
+
         % Only bottom subplot has xlabel
         if i == numFiles
             xlabel('Cumulative Distance Traveled');
@@ -322,3 +312,34 @@ for i = 1:numFiles
         warning('Missing required columns in file: %s', files{i});
     end
 end
+
+
+
+%% === Plot 8: Final Motor Lengths per Strategy (Single File per Strategy) ===
+
+% Number of strategies
+numStrategies = length(files);
+motorData = nan(numStrategies, 3);  % columns: M0, M1, M2
+
+for i = 1:numStrategies
+    data = readtable(files{i});
+    data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
+
+    if all(ismember({'M0', 'M1', 'M2'}, data.Properties.VariableNames))
+        motorData(i,:) = [data.M0(1), data.M1(1), data.M2(1)];
+    else
+        warning('Missing M0/M1/M2 in file: %s', files{i});
+    end
+end
+
+% Create grouped bar chart
+figure(8);
+bar(motorData, 'grouped');
+colormap(colors);
+title('Final Motor Lengths per Strategy');
+ylabel('Final Length (mm or unit)');
+set(gca, 'XTickLabel', labels, 'XTick', 1:numStrategies);
+legend({'M0', 'M1', 'M2'}, 'Location', 'bestoutside');
+xtickangle(45);
+grid on;
+
