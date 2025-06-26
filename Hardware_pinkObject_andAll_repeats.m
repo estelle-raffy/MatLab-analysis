@@ -132,28 +132,40 @@ for c = 1:numClusters
 end
 legend show; hold off;
 
-%% === Plot 4: Final Error Distance (Mean Across 5 Runs) ===
-finalErrors = zeros(length(files),1);
-for i = 1:length(files)
-    vals = zeros(5,1);
-    for j = 1:5
+%% === Plot 4: Final Error Distance (boxplot showing variability across 5 runs) === 
+
+numStrategies = length(files);
+numRepeats = 5;
+finalErrors = nan(numStrategies, numRepeats);  % store all runs
+
+for i = 1:numStrategies
+    for j = 1:numRepeats
         data = readtable(files{i}{j});
         data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
         ed = data.Error_Distance; % error_distance not global error because nice to see time at rest before tensegrity moves!
         ed = ed(~isnan(ed));
-        vals(j) = ed(end);
+        finalErrors(i, j) = ed(end);
     end
-    finalErrors(i) = mean(vals);
+end
+
+% Reshape data for boxplot
+errorDataReshaped = [];
+groupLabels = {};
+
+for i = 1:numStrategies
+    errorDataReshaped = [errorDataReshaped; finalErrors(i, :)'];
+    groupLabels = [groupLabels; repmat(labels(i), numRepeats, 1)];
 end
 
 figure(4);
-bar(finalErrors, 'FaceColor', 'flat'); colormap(colors);
-title('Mean Final Error Distance per Strategy');
-ylabel('Error Distance'); set(gca, 'XTickLabel', labels);
-xtickangle(45); grid on;
+boxplot(errorDataReshaped, groupLabels, 'LabelOrientation', 'inline');
+title('Final Error Distance per Strategy');
+ylabel('Error Distance');
+xtickangle(45);
+grid on;
 
-%% === Plot 5 (Fixed): Error Over Time (Mean Across Repeats Aligned by Time) ===
-figure(5); hold on;
+%% === Plot 5: Error Over Time (boxplot showing variability across 5 runs, Aligned by Time) ===
+figure(5); clf; hold on;
 title('Error Over Time (Mean Across Reps)');
 xlabel('Elapsed Time (s)');
 ylabel('Error (Error_Distance)');
@@ -163,7 +175,9 @@ grid on;
 numPoints = 200;
 
 for i = 1:length(files)
-    curves = [];
+    curves = zeros(5, numPoints);
+    tMax = 0;
+
     for j = 1:5
         data = readtable(files{i}{j});
         data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
@@ -174,40 +188,68 @@ for i = 1:length(files)
         t = t(valid);
         y = y(valid);
 
-        % Interpolate to common time base
+        if isempty(t) || isempty(y)
+            continue;
+        end
+
+        tMax = max(tMax, max(t));
         tNorm = linspace(min(t), max(t), numPoints);
         yInterp = interp1(t, y, tNorm, 'linear', 'extrap');
-
         curves(j,:) = yInterp;
     end
 
+    % Compute mean and std
     meanCurve = mean(curves, 1, 'omitnan');
-    plot(tNorm, meanCurve, 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', labels{i});
+    stdCurve = std(curves, 0, 1, 'omitnan');
+    tPlot = linspace(0, tMax, numPoints);
+
+    % Shaded region (±std), suppress from legend
+    hFill = fill([tPlot fliplr(tPlot)], ...
+                 [meanCurve + stdCurve, fliplr(meanCurve - stdCurve)], ...
+                 colors(i,:), 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    hFill.Annotation.LegendInformation.IconDisplayStyle = 'off';
+
+    % Mean line (shown in legend)
+    plot(tPlot, meanCurve, 'Color', colors(i,:), 'LineWidth', 1.5, ...
+         'DisplayName', labels{i});
 end
 
 legend('Location', 'best');
 hold off;
 
 
-%% === Plot 6: Total Movement Distance (Mean Across 5) ===
-totalDistances = zeros(length(files),1);
-for i = 1:length(files)
-    dists = zeros(5,1);
-    for j = 1:5
+%% === Plot 6: Total Movement Distance (boxplot showing variability across 5 runs) ===
+
+numStrategies = length(files);
+numRepeats = 5;
+totalDistances = nan(numStrategies, numRepeats);
+
+for i = 1:numStrategies
+    for j = 1:numRepeats
         data = readtable(files{i}{j});
         data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
         x = data.X_Position;
         y = data.Y_Position;
         dx = diff(x); dy = diff(y);
-        dists(j) = sum(sqrt(dx.^2 + dy.^2), 'omitnan');
+        totalDistances(i, j) = sum(sqrt(dx.^2 + dy.^2), 'omitnan');
     end
-    totalDistances(i) = mean(dists);
+end
+
+% Reshape for boxplot
+distancesReshaped = [];
+groupLabels = {};
+
+for i = 1:numStrategies
+    distancesReshaped = [distancesReshaped; totalDistances(i, :)'];
+    groupLabels = [groupLabels; repmat(labels(i), numRepeats, 1)];
 end
 
 figure(6);
-bar(totalDistances, 'FaceColor', 'flat'); colormap(colors);
-title('Total Distance Traveled (Mean)'); ylabel('Distance');
-set(gca, 'XTickLabel', labels); xtickangle(45); grid on;
+boxplot(distancesReshaped, groupLabels, 'LabelOrientation', 'inline');
+title('Total Distance Traveled');
+ylabel('Distance');
+xtickangle(45); grid on;
+
 
 %% === Plot 7: Productivity vs Cumulative Distance ===
 figure(7);
@@ -261,7 +303,75 @@ for i = 1:length(files)
     end
 end
 
-%% === Plot 8: Final Motor Lengths (M0, M1, M2) ===
+%% === Plot 8: Productivity Summary Boxplot (Normalized by Distance) ===
+
+% Preallocate matrices:
+numStrategies = length(files);
+numRepeats = 5;
+productiveSum = nan(numStrategies, numRepeats);    % Sum of negative productivity (productive phases)
+unproductiveSum = nan(numStrategies, numRepeats);  % Sum of positive productivity (unproductive phases)
+
+for i = 1:numStrategies
+    for j = 1:numRepeats
+        data = readtable(files{i}{j});
+        data.Properties.VariableNames = strtrim(data.Properties.VariableNames);
+        
+        x = data.X_Position;
+        y = data.Y_Position;
+        err = data.Error_Distance;
+        
+        valid = ~isnan(err);
+        x = x(valid); y = y(valid); err = err(valid);
+        
+        dx = diff(x);
+        dy = diff(y);
+        stepDist = sqrt(dx.^2 + dy.^2);
+        cumDist = [0; cumsum(stepDist)];
+        
+        deltaError = err(1:end-1) - err(2:end);
+        productivity = deltaError ./ stepDist;
+        productivity(stepDist == 0) = 0;
+        
+        % Normalize sums by total distance to compare runs
+        % especially if they have different lengths or step counts.
+        totalDist = sum(stepDist);
+        
+        % Sum productive and unproductive phases separately
+        productiveSum(i,j) = sum(-productivity(productivity < 0)) / totalDist;    % Negative productivity summed as positive number
+        unproductiveSum(i,j) = sum(productivity(productivity > 0)) / totalDist;   % Positive productivity summed as is
+    end
+end
+
+% Prepare data for boxplot:
+% Combine productive and unproductive data in one array
+allData = [productiveSum(:); unproductiveSum(:)];
+
+% Group labels: For each strategy, two groups: 'Productive' and 'Unproductive'
+groupLabels = {};
+types = {'Productive', 'Unproductive'};
+for t = 1:2
+    for i = 1:numStrategies
+        groupLabels = [groupLabels; repmat({[labels{i} ' - ' types{t}]}, numRepeats, 1)];
+    end
+end
+
+figure(8);
+boxplot(allData, groupLabels, 'LabelOrientation', 'inline');
+title('Normalized Productivity Summary per Strategy');
+ylabel('Sum of Productivity / Total Distance');
+xtickangle(45);
+grid on;
+
+% ===
+% Notes:
+% - Normalised productivity sums by total traveled distance per run to make comparisons (python has inconsistent # of data vs Arduino).
+% - "Productive" sum aggregates all phases where error decreased per unit distance.
+% - "Unproductive" sum aggregates all phases where error increased per unit distance.
+% - This helps interpret how much overall productive vs unproductive effort each strategy made.
+% - Boxplots show variability across the 5 repeats for each strategy.
+
+
+%% === Plot 9: Final Motor Lengths (M0, M1, M2) ===
 
 % Preallocate matrix: [strategy x repetition x motor]
 numStrategies = length(files);
@@ -296,7 +406,7 @@ for m = 1:numMotors
 end
 
 % Create boxplot
-figure(8);
+figure(9);
 boxplot(motorDataReshaped, groupLabels, 'LabelOrientation', 'inline');
 title('Final Motor Lengths per Strategy (M0, M1, M2)');
 ylabel('Final Length (mm or unit)');
