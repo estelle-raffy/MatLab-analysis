@@ -1,7 +1,7 @@
 clear; clc; close all;
 
 % Folder with your Excel files
-dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1';
+dataFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\NoBall';
 files = dir(fullfile(dataFolder, '*.xlsx'));
 
 %{
@@ -506,7 +506,7 @@ end
 % ========================================================================
 
 % === Input file ===
-file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx'; % <-- Update this
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\NoBall\EXP2_NEIGHBOUR.xlsx'; % <-- Update this
 T = readtable(file);
 
 % === Extract strategy name from filename ===
@@ -583,8 +583,11 @@ end
 % === Plot 3.b: Inter-File Comparison of Best Shapes ===
 
 files = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc1\Thresholds_2250-1800\EXP3_GLOBAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc1\Thresholds_2250-1800\EXP3_HOMEO.xlsx'
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_NEIGHBOUR.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa3Wb3Wc3\EXP2_NEIGHBOUR.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc3\EXP2_NEIGHBOUR.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa1Wb1Wc3\target_air_500\EXP3_NEIGHBOUR.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\EXP3_NEIGHBOUR.xlsx',
 };
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
@@ -836,10 +839,10 @@ end
 
 
 % ========================================================================
-%% PLOT 6/7: Intra-Strategy — Area Distribution as Dots
+%% PLOT 6/7: Intra-Strategy 
 % ========================================================================
 
-file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_SELFISH.xlsx';
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx';
 T = readtable(file);
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
@@ -908,8 +911,14 @@ end
 
 % Plot mean shapes
 figure;
-hold on; axis equal; grid on;
+hold on;
+axis equal;
+grid on;
+
 title('Morphological Clusters — Single File');
+ylabel('Relative vertical position (normalized)');
+set(gca, 'XTick', []);  % remove X-axis tick labels
+
 colors = lines(length(mean_shapes));
 for i = 1:length(mean_shapes)
     shape = mean_shapes{i};
@@ -932,12 +941,11 @@ end
 % ========================================================================
 
 files = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb033Wc0.33\EXP1_LOCAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_LOCAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc0.33\EXP1_LOCAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb0.33Wc1\EXP1_LOCAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc1\EXP1_LOCAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx'
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa1Wb1Wc0.33\EXP1_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa1Wb1Wc3\EXP2_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc1\EXP3_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\EXP2_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\EXP3_GLOBAL.xlsx',
 };
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
@@ -997,16 +1005,22 @@ for k = 1:length(unique_clusters)
     ref = shapes{idxs(1)};
     aligned = zeros(length(idxs), size(ref,1), size(ref,2));
     for i = 1:length(idxs)
-        [~, Z] = procrustes(ref, shapes{idxs(i)});
-        aligned(i,:,:) = Z;
+        [~, aligned_shape] = procrustes(ref, shapes{idxs(i)});
+        aligned(i,:,:) = aligned_shape;
     end
     mean_shapes{k} = squeeze(mean(aligned, 1));
 end
 
 % Plot mean shapes
 figure;
-hold on; axis equal; grid on;
-title('Morphological Clusters — Across Files');
+hold on;
+axis equal;
+grid on;
+
+title('Morphological Clusters — Across File');
+ylabel('Relative vertical position (normalized)');
+set(gca, 'XTick', []);  % remove X-axis tick labels
+
 colors = lines(length(mean_shapes));
 for i = 1:length(mean_shapes)
     shape = mean_shapes{i};
@@ -1021,6 +1035,155 @@ for i = 1:length(mean_shapes)
              colors(i,:), 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
     end
 end
+
+
+% === Dendrogram with shape thumbnails ===
+figure;
+
+% Top subplot: Dendrogram
+subplot(2, 1, 1);
+[H, T, outperm] = dendrogram(Z, 0);
+set(H, 'LineWidth', 1.2);
+cutoff_val = 0.01; % your cutoff value
+yline(cutoff_val, '--r', sprintf('Cut-off = %.3f', cutoff_val), 'Color', 'r');
+
+
+% After dendrogram plotting
+hold on;
+
+numMerges = size(Z, 1);
+for i = 1:numMerges
+    % Each merge corresponds to a branch between two clusters/leaves
+    % Find the x coordinates of the branch ends from H(i)
+    % H is an array of Line objects for the dendrogram branches
+    % The two points connected by the merge are in the XData(2) and XData(3)
+    xCoords = [H(i).XData(2), H(i).XData(3)];
+    xCenter = mean(xCoords);   % middle point between the branch ends
+    yHeight = Z(i, 3);         % height of this merge = Procrustes distance
+
+    % Offset the text a bit above the branch height to avoid overlap
+    text(xCenter, yHeight + 0.05 * range(ylim), sprintf('%.3f', yHeight), ...
+         'HorizontalAlignment', 'center', 'FontSize', 8, 'Color', [0 0 0]);
+end
+hold off;
+
+
+title('Dendrogram of Shape Similarities');
+ylabel('Procrustes Distance');
+xlabel('');
+
+% Bottom subplot: Shape thumbnails in dendrogram order
+subplot(2, 1, 2);
+hold on;
+axis off;
+axis equal;
+
+nShapes = numel(outperm);
+theta = linspace(0, 2*pi, 20);
+radius = 0.05;
+
+for i = 1:nShapes
+    idx = outperm(i);
+    shape = shapes{idx};
+
+    % Normalize and center the shape
+    shape = shape - mean(shape, 1);
+    shape = shape / max(vecnorm(shape, 2, 2)) * 0.5;
+
+    % Offset along x-axis to spread shapes out
+    xOffset = (i - 1) * 1.2;
+    bx = shape(:,1) + xOffset;
+    by = shape(:,2);
+
+    % Plot springs
+    for j = 1:size(spring_pairs,1)
+        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
+             '-', 'Color', [0.4 0.4 0.4]);
+    end
+
+    % Plot bodies
+    for j = 1:5
+        fill(bx(j) + radius*cos(theta), by(j) + radius*sin(theta), ...
+             [0.5 0.5 0.5], 'EdgeColor', 'k');
+    end
+
+    % Add shape index label
+    text(mean(bx), min(by) - 0.15, sprintf('%d', idx), ...
+         'HorizontalAlignment', 'center', 'FontSize', 8);
+end
+
+xlim([-1, nShapes * 1.2]);
+ylim([-1, 1]);
+title('Shapes in Dendrogram Leaf Order');
+
+
+%{
+
+% --- Plot 2/2: Dendrogram with Distances and Shape Miniatures
+figure;
+[H, T, outperm] = dendrogram(Z, 0);  % '0' = full tree
+set(H, 'LineWidth', 1.2);
+
+% Add branch height distance labels
+numMerges = size(Z, 1);
+for i = 1:numMerges
+    % Approximate coordinates for label
+    x = mean(H(i).XData(2:3));
+    y = H(i).YData(2);
+
+    % Distance label
+    dist = Z(i, 3);
+    text(x, y + 0.005, sprintf('%.3f', dist), ...
+         'HorizontalAlignment', 'center', ...
+         'FontSize', 8, 'Color', [0.2 0.2 0.2]);
+end
+
+title('Dendrogram of Shape Similarities');
+xlabel('Shape Index');
+ylabel('Procrustes Distance');
+
+% Red dashed cut-off line (re-added correctly)
+cutoff = 0.01;
+yline(cutoff, '--r', 'Cut-off');
+
+hold on;
+
+% === Plot shape miniatures below each leaf ===
+leaf_positions = get(gca, 'XTick');
+theta = linspace(0, 2*pi, 20);
+radius_body = 0.05;
+scale = 0.1;
+y_offset = -0.07;  % move below x-axis
+
+for i = 1:length(outperm)
+    idx = outperm(i);  % original shape index
+    shape = shapes{idx};
+
+    % Center and scale
+    shape = shape - mean(shape, 1);
+    shape = shape * scale;
+
+    % Offset
+    bx = shape(:,1) + leaf_positions(i);
+    by = shape(:,2) + y_offset;
+
+    % Draw lines
+    for j = 1:size(spring_pairs,1)
+        plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
+             [by(spring_pairs(j,1)), by(spring_pairs(j,2))], ...
+             '-', 'Color', [0.4 0.4 0.4], 'LineWidth', 0.8);
+    end
+
+    % Draw bodies
+    for j = 1:5
+        fill(bx(j) + radius_body*scale*cos(theta), ...
+             by(j) + radius_body*scale*sin(theta), ...
+             [0.7 0.7 0.7], 'EdgeColor', 'k', 'LineWidth', 0.2);
+    end
+end
+
+%}
 
 %{
 % ===================================================================
