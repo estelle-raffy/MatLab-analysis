@@ -506,7 +506,7 @@ end
 % ========================================================================
 
 % === Input file ===
-file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\NoBall\EXP2_NEIGHBOUR.xlsx'; % <-- Update this
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa0.33Wb0.33Wc1\EXP1_GLOBAL_ONLY.xlsx';
 T = readtable(file);
 
 % === Extract strategy name from filename ===
@@ -517,11 +517,13 @@ if ~isempty(tokens)
 else
     strategyName = 'Unknown Strategy';
 end
+strategyName = strrep(strategyName, '_', ' ');  % For display
 
 % === Define spring connections and drawing parameters ===
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
 theta = linspace(0, 2*pi, 20);
 radius_body = 0.05;
+scale_factor = 0.8;  % Scale down slightly
 
 % === Extract actuation data ===
 m1 = T.M1_actuation_final;
@@ -538,10 +540,12 @@ ends = find(d == -1) - 1;
 figure('Name', ['Intra-file shape diversity — ' strategyName]);
 hold on; axis equal; grid on;
 title(['All Final Positions (≥5s 0-actuation) — Strategy: ' strategyName]);
-xlabel('X'); ylabel('Y');
-set(gca, 'XTickLabel', []);
-set(gca, 'YTickLabel', []);
+set(gca, 'XTick', []);
+set(gca, 'YTick', []);
+
 colors = lines(length(starts));
+all_bx = [];
+all_by = [];
 
 % === Plot each qualifying shape snapshot ===
 for z = 1:length(starts)
@@ -554,9 +558,16 @@ for z = 1:length(starts)
     by = [T.body1_pos_y(idx), T.body2_pos_y(idx), T.body3_pos_y(idx), ...
           T.body4_pos_y(idx), T.body5_pos_y(idx)];
 
-    % Normalize positions
+    % Normalize
     bx = bx - bx(1); bx = bx - min(bx); if max(bx) > 0, bx = bx / max(bx) * 2; end
     by = by - by(1); by = by - min(by); if max(by) > 0, by = by / max(by); end
+
+    % Scale down
+    bx = bx * scale_factor;
+    by = by * scale_factor;
+
+    all_bx = [all_bx, bx];
+    all_by = [all_by, by];
 
     % Draw springs
     for j = 1:size(spring_pairs,1)
@@ -574,11 +585,23 @@ for z = 1:length(starts)
     end
 end
 
+% === Add margin and center ===
+xMargin = 0.5;
+yMargin = 0.3;
+if ~isempty(all_bx) && ~isempty(all_by)
+    xMin = min(all_bx); xMax = max(all_bx);
+    yMin = min(all_by); yMax = max(all_by);
+    xCenter = (xMin + xMax) / 2;
+    yCenter = (yMin + yMax) / 2;
+    xlim([xCenter - (xMax - xMin)/2 - xMargin, xCenter + (xMax - xMin)/2 + xMargin]);
+    ylim([yCenter - (yMax - yMin)/2 - yMargin, yCenter + (yMax - yMin)/2 + yMargin]);
+end
+
 % === Add legend for strategy name ===
 %legend(strategyName, 'Location', 'northeastoutside');
 
 
-%{
+
 %% MAY NEED COMMENTING OFF IF WANT ACTUATION SIGNAL TO WORK
 % === Plot 3.b: Inter-File Comparison of Best Shapes ===
 
@@ -756,8 +779,9 @@ end
 
 % File paths (replace these with your actual paths)
 filePaths = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_NEIGHBOUR.xlsx'
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_NEIGHBOUR.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_SELFISH.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb1Wc0.33\EXP1_GLOBAL.xlsx'
 };
 
 % Strategy keywords
@@ -842,7 +866,7 @@ end
 %% PLOT 6/7: Intra-Strategy 
 % ========================================================================
 
-file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons\Wa1Wb3Wc1\EXP1_LOCAL.xlsx';
+file = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa0.33Wb0.33Wc1\EXP1_LOCAL.xlsx';
 T = readtable(file);
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
@@ -875,33 +899,29 @@ for z = 1:length(starts)
     shapes{end+1} = [bx(:), by(:)];
 end
 
-% Compute pairwise Procrustes distances: for each pair of shapes get d
-% the smaller d, the more similar the shapes (0=identical shapes)
+% Compute pairwise Procrustes distances
 n = numel(shapes);
 D = zeros(n);
 for i = 1:n
     for j = i+1:n
         [d, ~] = procrustes(shapes{i}, shapes{j});
-        D(i,j) = d; % store distance in Matrix D
+        D(i,j) = d;
         D(j,i) = d;
         fprintf('INTRA - Procrustes distance between shape %d and %d: %.4f\n', i, j, d);
     end
 end
 
-% Cluster shapes: start with one shape, group with next best similar 
-% and so on, cutoff at a certain 'is different threshold'
-Z = linkage(squareform(D), 'average'); % group similar shapes, linkage looks at distance matrix and groups closest first, makes a 'tree'
-T_clust = cluster(Z, 'cutoff', 0.01, 'criterion', 'distance'); % T_clust tells what cluster belongs to: look at tree and use cutoff to sort into clusters
-% shape below it get together, above belong to diff clusters 
+% Cluster shapes
+Z = linkage(squareform(D), 'average');
+T_clust = cluster(Z, 'cutoff', 0.01, 'criterion', 'distance');
 
-% Mean shape per cluster: take shape as reference, make shape fit as
-% possible (rotate/resize using Procruste) and get the mean of all of them. 
+% Mean shape per cluster
 unique_clusters = unique(T_clust);
 mean_shapes = cell(length(unique_clusters), 1);
 for k = 1:length(unique_clusters)
     idxs = find(T_clust == unique_clusters(k));
     ref = shapes{idxs(1)};
-    aligned = zeros(length(idxs), size(ref,1), size(ref,2)); % save shapes in aligned array
+    aligned = zeros(length(idxs), size(ref,1), size(ref,2));
     for i = 1:length(idxs)
         [~, Z] = procrustes(ref, shapes{idxs(i)});
         aligned(i,:,:) = Z;
@@ -909,20 +929,40 @@ for k = 1:length(unique_clusters)
     mean_shapes{k} = squeeze(mean(aligned, 1));
 end
 
+[~, fname, ~] = fileparts(file);
+underscore_pos = strfind(fname, '_');
+if isempty(underscore_pos)
+    strategy_name = fname; % no underscore found, use whole filename
+else
+    strategy_name = fname(underscore_pos(1)+1:end); % everything after first underscore
+end
+
+
 % Plot mean shapes
 figure;
+set(gcf, 'Position', [100, 100, 1200, 500]);
 hold on;
 axis equal;
 grid on;
 
-title('Morphological Clusters — Single File');
-ylabel('Relative vertical position (normalized)');
-set(gca, 'XTick', []);  % remove X-axis tick labels
+strategy_name_for_title = strrep(strategy_name, '_', ' ');
+title(['Morphological Clusters — Single File (', strategy_name_for_title, ')']);
+set(gca, 'XTick', []);
+set(gca, 'YTick', []);
 
 colors = lines(length(mean_shapes));
-for i = 1:length(mean_shapes)
+
+cluster_spacing = 4;
+max_clusters = 5;
+plot_width = cluster_spacing * max_clusters;
+
+num_clusters = length(mean_shapes);
+start_x = ((max_clusters - num_clusters) / 2) * cluster_spacing;
+
+for i = 1:num_clusters
     shape = mean_shapes{i};
-    bx = shape(:,1) + i * 3;  % space shapes out
+    offset = start_x + (i-1) * cluster_spacing;
+    bx = shape(:,1) + offset;
     by = shape(:,2);
     for j = 1:size(spring_pairs,1)
         plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
@@ -934,6 +974,8 @@ for i = 1:length(mean_shapes)
     end
 end
 
+xlim([-1, cluster_spacing * max_clusters]);
+ylim([-0.5, 1.5]);
 
 
 % ========================================================================
@@ -941,12 +983,12 @@ end
 % ========================================================================
 
 files = {
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa1Wb1Wc0.33\EXP1_GLOBAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa1Wb1Wc3\EXP2_GLOBAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc1\EXP3_GLOBAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\EXP2_GLOBAL.xlsx',
-    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa3Wb3Wc3\target_air_500\EXP3_GLOBAL.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa0.33Wb0.33Wc1\EXP1_GLOBAL_ONLY.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa0.33Wb0.33Wc3\EXP1_GLOBAL_ONLY.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa0.33Wb0.33Wc3\EXP2_GLOBAL_ONLY.xlsx',
+    'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\3_Modules_NAIVE\LEVELS\THESIS_Tests\FUNCTIONALITIES_COMPARISONS\Target_experiments_comparisons_NOGRAV\Wa0.33Wb0.33Wc3\EXP3_GLOBAL_ONLY.xlsx',
 };
+
 
 spring_pairs = [1 3; 3 2; 1 2; 2 5; 3 5; 5 4; 2 4];
 theta = linspace(0, 2*pi, 20);
@@ -1011,20 +1053,45 @@ for k = 1:length(unique_clusters)
     mean_shapes{k} = squeeze(mean(aligned, 1));
 end
 
+% Extract strategy name from first file (between last '_' and '.xlsx')
+[~, fname, ~] = fileparts(files{1});
+underscore_pos = strfind(fname, '_');
+if isempty(underscore_pos)
+    strategy_name = fname; % no underscore found, use whole filename
+else
+    strategy_name = fname(underscore_pos(1)+1:end); % everything after first underscore
+end
+
 % Plot mean shapes
 figure;
+set(gcf, 'Position', [100, 100, 1200, 500]);  % Optional: set figure size
 hold on;
 axis equal;
 grid on;
 
-title('Morphological Clusters — Across File');
-ylabel('Relative vertical position (normalized)');
+
+strategy_name_for_title = strrep(strategy_name, '_', ' ');
+title(['Morphological Clusters — Across Files (', strategy_name_for_title, ')']);
+%ylabel('Relative vertical position (normalized)');
 set(gca, 'XTick', []);  % remove X-axis tick labels
+set(gca, 'YTick', []);  % remove X-axis tick labels
 
 colors = lines(length(mean_shapes));
-for i = 1:length(mean_shapes)
+
+% Parameters
+cluster_spacing = 4;          % Horizontal space between clusters
+max_clusters = 5;             % Known upper bound
+plot_width = cluster_spacing * max_clusters;
+
+% Calculate centering offset
+num_clusters = length(mean_shapes);
+start_x = ((max_clusters - num_clusters) / 2) * cluster_spacing;
+
+% Plot clusters at centered positions
+for i = 1:num_clusters
     shape = mean_shapes{i};
-    bx = shape(:,1) + i * 3;
+    offset = start_x + (i-1) * cluster_spacing;
+    bx = shape(:,1) + offset;
     by = shape(:,2);
     for j = 1:size(spring_pairs,1)
         plot([bx(spring_pairs(j,1)), bx(spring_pairs(j,2))], ...
@@ -1035,6 +1102,11 @@ for i = 1:length(mean_shapes)
              colors(i,:), 'FaceAlpha', 0.6, 'EdgeColor', 'k', 'LineWidth', 0.3);
     end
 end
+
+% Fix axis limits
+xlim([-1, plot_width]);
+ylim([-0.5, 1.5]);
+
 
 
 % === Dendrogram with shape thumbnails ===
