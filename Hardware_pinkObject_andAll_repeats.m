@@ -578,5 +578,164 @@ for i = 1:length(files)
 end
 
 
+%%%
+%% LOCAL & NEIGHBOUR SUPPORT - productivity underover-exploring phases 
+%%%
+
+%%% === Productivity Support Plot: Actuation vs Error Over Time ===
+%%% === Visualizing Productive vs Unproductive Phases ===
+
+targetStrategy = 'LOCAL';  % Change to 'LOCAL' etc. as needed
+
+figure;
+plotCount = 1;
+
+for i = 1:length(files)
+    if strcmp(strategyNames{i}, targetStrategy)
+        for j = 1:length(files{i})
+            data = readtable(files{i}{j});
+            data.Properties.VariableNames = matlab.lang.makeValidName(strtrim(data.Properties.VariableNames));
+            
+            % Ensure the data is ordered by Sample_Number and Motor
+            data = sortrows(data, {'Sample_Number', 'Motor'});
+
+            % Keep only one row per Sample_Number (e.g., take M0 always)
+            % Assumes motors are in consistent order (M0, M1, M2)
+            % If needed, filter by Motor == 'M0'
+            uniqueSamples = unique(data.Sample_Number);
+            idx = find(strcmp(strtrim(data.Motor), 'M0'));  % or use 'Motor' == '0'
+            actuation = data.Final_Actuation(idx);
+            error = data.Error_python(idx);
+            samples = data.Sample_Number(idx);
+
+            % Calculate productivity: Δerror / Δsample
+            dErr = diff(error);
+            dT = diff(samples);  % should be 1 usually
+            productivity = -dErr ./ dT;  % Positive if error is decreasing
+            productivity(dT == 0) = 0;
+
+            % Label as productive or unproductive
+            isProductive = productivity > 0;
+            isUnproductive = productivity < 0;
+
+            % Prepare plot
+            subplot(length(files{i}), 1, plotCount); hold on;
+
+            % Plot error
+            yyaxis right;
+            plot(samples(2:end), error(2:end), 'b-', 'LineWidth', 1.2);
+            ylabel('Error');
+
+            % Plot actuation
+            yyaxis left;
+            plot(samples(2:end), actuation(2:end), 'k-', 'LineWidth', 1.2);
+            ylabel('Actuation');
+
+            % Highlight productive/unproductive phases
+            % Slice relevant segments
+            samples_sub = samples(2:end);
+            actuation_sub = actuation(2:end);
+            
+            % Now use logical indexing on these
+            scatter(samples_sub(isProductive), actuation_sub(isProductive), 20, 'g', 'filled', 'DisplayName', 'Productive');
+            scatter(samples_sub(isUnproductive), actuation_sub(isUnproductive), 20, 'r', 'filled', 'DisplayName', 'Unproductive');
+
+            title(sprintf('%s Trial %d: Productivity over Time', targetStrategy, j), 'Interpreter', 'none');
+            xlabel('Sample Number');
+            legend({'Actuation', 'Error', 'Productive', 'Unproductive'});
+            set(gca, 'FontSize', 12);
+            grid on;
+
+            plotCount = plotCount + 1;
+        end
+    end
+end
 
 
+
+%%%
+%% SELFISH SUPPORT - Erratic behaviour: local frustration and Wb regulation 
+%%%
+
+figure;
+for i = 1:length(files)
+    if strcmp(strategyNames{i}, 'SELFISH')
+        for j = 1:length(files{i})
+            data = readtable(files{i}{j});
+            
+            % Filter for M0 and M2 (where local frustration and weight are meaningful)
+            validRows = ismember(strtrim(data.Motor), {'M0', 'M2'});
+            sample = data.Sample_Number(validRows);
+            frustration = data.Local_Frustration(validRows);
+            weight = data.Weight(validRows);
+
+            subplot(length(files{i}),2,2*j-1);
+            plot(sample, frustration, 'r-', 'LineWidth', 1.2);
+            title(sprintf('SELFISH Trial %d - Local Frustration (M0+M2)', j));
+            xlabel('Sample Number');
+            ylabel('Local Frustration');
+            set(gca,'FontSize',12);
+
+            subplot(length(files{i}),2,2*j);
+            plot(sample, weight, 'b-', 'LineWidth', 1.2);
+            title(sprintf('SELFISH Trial %d - Weight Regulation (M0+M2)', j));
+            xlabel('Sample Number');
+            ylabel('Weight');
+            set(gca,'FontSize',12);
+        end
+    end
+end
+
+%%%
+%% GLOBAL SUPPORT - better regulation? : local frustration & Wb regulation VS global frustration & Global Wb regulation
+%%%
+
+figure; hold on;
+for i = 1:length(files)
+    if strcmp(strategyNames{i}, 'GLOBAL') || strcmp(strategyNames{i}, 'SELFISH')
+        allWeight = [];
+        allFrustration = [];
+        allSamples = [];
+
+        for j = 1:length(files{i})
+            data = readtable(files{i}{j});
+
+            if strcmp(strategyNames{i}, 'GLOBAL')
+                % GLOBAL: Only M1 rows matter
+                validRows = ismember(strtrim(data.Motor), {'M1'});
+                weight = data.Global_Neighbour_Weight(validRows);
+                frustration = data.Global_Frustration(validRows);
+            else
+                % SELFISH: Only M0 and M2 rows matter
+                validRows = ismember(strtrim(data.Motor), {'M0', 'M2'});
+                weight = data.Weight(validRows);
+                frustration = data.Local_Frustration(validRows);
+            end
+
+            samples = data.Sample_Number(validRows);
+
+            allWeight = [allWeight; weight(:)];
+            allFrustration = [allFrustration; frustration(:)];
+            allSamples = [allSamples; samples(:)];
+        end
+
+        % Aggregate by unique sample number
+        [tUnique, ~, idx] = unique(allSamples);
+        meanWeight = accumarray(idx, allWeight, [], @mean, NaN);
+        meanFrustration = accumarray(idx, allFrustration, [], @mean, NaN);
+
+        if strcmp(strategyNames{i}, 'GLOBAL')
+            plot(tUnique, meanWeight, 'b-', 'LineWidth', 2, 'DisplayName', 'GLOBAL Weight');
+            plot(tUnique, meanFrustration, 'c--', 'LineWidth', 2, 'DisplayName', 'GLOBAL Frustration');
+        else
+            plot(tUnique, meanWeight, 'r-', 'LineWidth', 2, 'DisplayName', 'SELFISH Weight');
+            plot(tUnique, meanFrustration, 'm--', 'LineWidth', 2, 'DisplayName', 'SELFISH Frustration');
+        end
+    end
+end
+
+title('Weight and Frustration Comparison: GLOBAL vs SELFISH');
+xlabel('Sample Number');
+ylabel('Mean Value');
+legend('Location', 'best');
+set(gca,'FontSize',14);
