@@ -5,16 +5,16 @@ numSamplePoints = 200; % Resample trajectories to this length, ONLY USING error_
 distThreshold = 0.1;
 
 % === Set Folder Where Excel Files Are Stored ===
-baseFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\Hardware\THESIS_TESTS\5 repeats Preliminary\300x300_1xELONGATE_length'; 
+baseFolder = 'C:\Users\om21104\OneDrive - University of Bristol\Desktop\Project SC\Results\Hardware\THESIS_TESTS\M3 Success Region\REPEATS_top'; 
 
 %% === Load Excel File Paths ===
 % Each strategy has 5 repetitions
 files = {
-    fullfile(baseFolder, {'LOCAL1.xlsx', 'LOCAL2.xlsx', 'LOCAL3.xlsx', 'LOCAL4.xlsx', 'LOCAL5.xlsx'});
-    fullfile(baseFolder, {'NEIGHBOUR1.xlsx', 'NEIGHBOUR2.xlsx', 'NEIGHBOUR3.xlsx', 'NEIGHBOUR4.xlsx', 'NEIGHBOUR5.xlsx'});
-    fullfile(baseFolder, {'SELFISH1.xlsx', 'SELFISH2.xlsx', 'SELFISH3.xlsx', 'SELFISH4.xlsx', 'SELFISH5.xlsx'});
-    fullfile(baseFolder, {'GLOBAL1.xlsx', 'GLOBAL2.xlsx', 'GLOBAL3.xlsx', 'GLOBAL4.xlsx', 'GLOBAL5.xlsx'});
-    fullfile(baseFolder, {'GLOBAL_ONLY1.xlsx', 'GLOBAL_ONLY2.xlsx', 'GLOBAL_ONLY3.xlsx', 'GLOBAL_ONLY4.xlsx', 'GLOBAL_ONLY5.xlsx'});
+    fullfile(baseFolder, {'16B_1_LOCAL.xlsx', '16B_2_LOCAL.xlsx', '16B_3_LOCAL.xlsx', '16B_4_LOCAL.xlsx', '16B_5_LOCAL.xlsx'});
+    fullfile(baseFolder, {'16B_1_NEIGHBOUR.xlsx', '16B_2_NEIGHBOUR.xlsx', '16B_3_NEIGHBOUR.xlsx', '16B_4_NEIGHBOUR.xlsx', '16B_5_NEIGHBOUR.xlsx'});
+    fullfile(baseFolder, {'16B_1_SELFISH.xlsx', '16B_2_SELFISH.xlsx', '16B_3_SELFISH.xlsx', '16B_4_SELFISH.xlsx', '16B_5_SELFISH.xlsx'});
+    fullfile(baseFolder, {'16B_1_GLOBAL.xlsx', '16B_2_GLOBAL.xlsx', '16B_3_GLOBAL.xlsx', '16B_4_GLOBAL.xlsx', '16B_5_GLOBAL.xlsx'});
+    fullfile(baseFolder, {'16_1_GLOBAL_ONLY.xlsx', '16_2_GLOBAL_ONLY.xlsx', '16_3_GLOBAL_ONLY.xlsx', '16_4_GLOBAL_ONLY.xlsx', '16_5_GLOBAL_ONLY.xlsx'});
 };
 
 strategyNames = {'LOCAL', 'NEIGHBOUR', 'SELFISH', 'GLOBAL', 'GLOBAL_ONLY'};
@@ -71,6 +71,8 @@ for i = 1:length(allTrajectories)
 end
 legend('Location', 'best'); hold off;
 
+
+
 %% === Plot 2: Procrustes Distance Heatmap (Mean Shapes) ===
 n = length(meanTrajectories);
 distMatrix = zeros(n);
@@ -89,6 +91,8 @@ title('Procrustes Distance Matrix (Mean Trajectories)');
 set(gca, 'XTick', 1:n, 'XTickLabel', labels, 'XTickLabelRotation', 45);
 set(gca, 'YTick', 1:n, 'YTickLabel', labels);
 axis square;
+
+
 
 %% === Plot 3: Dendrogram + Clustering (Mean Shapes) ===
 Y = squareform(distMatrix);
@@ -251,6 +255,8 @@ ylabel('Distance');
 xtickangle(45); grid on;
 
 
+%{
+
 %% === Plot 7: Productivity vs Cumulative Distance ===
 figure(7);
 tiledlayout(length(files), 1, 'Padding', 'compact', 'TileSpacing', 'compact');
@@ -302,6 +308,8 @@ for i = 1:length(files)
         set(gca,'XTickLabel',[]);
     end
 end
+
+%}
 
 %% === Plot 8: Productivity Summary Boxplot (Normalized by Distance) ===
 
@@ -358,7 +366,9 @@ end
 figure(8);
 boxplot(allData, groupLabels, 'LabelOrientation', 'inline');
 title('Normalized Productivity Summary per Strategy');
-ylabel('Sum of Productivity / Total Distance');
+ylabel('Sum of Productivity / Total Distance'); % sum of normalized productivity values (unitless ratio).
+% How much error improvement (productive) or deterioration (unproductive) you got per unit of total distance traveled in that run.
+% productive sum = 0.3 → You improved error by a total amount equivalent to 0.3 times your total distance traveled.
 xtickangle(45);
 grid on;
 
@@ -412,4 +422,161 @@ title('Final Motor Lengths per Strategy (M0, M1, M2)');
 ylabel('Final Length (mm or unit)');
 xtickangle(45);
 grid on;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% SUPPORT PLOTS 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+figure;
+
+for i = 1:length(files)
+    subplot(3, 2, i); hold on;
+
+    cleanName = strrep(strategyNames{i}, '_', ' ');
+
+    trialM0 = {};
+    trialM1 = {};
+    trialM2 = {};
+    maxT = 0;
+
+    for j = 1:length(files{i})
+        data = readtable(files{i}{j});
+        data.Properties.VariableNames = matlab.lang.makeValidName(strtrim(data.Properties.VariableNames));
+
+        data = sortrows(data, {'Sample_Number', 'Motor'});
+        sampleNums = unique(data.Sample_Number);
+        nSteps = length(sampleNums);
+        maxT = max(maxT, nSteps);
+
+        M0 = nan(nSteps, 1);
+        M1 = nan(nSteps, 1);
+        M2 = nan(nSteps, 1);
+
+        for k = 1:nSteps
+            block = data(data.Sample_Number == sampleNums(k), :);
+            for m = 1:height(block)
+                motorLabel = strtrim(block.Motor{m});
+                val = block.Final_Actuation(m);
+                if contains(motorLabel, '0')
+                    M0(k) = val;
+                elseif contains(motorLabel, '1')
+                    M1(k) = val;
+                elseif contains(motorLabel, '2')
+                    M2(k) = val;
+                end
+            end
+        end
+
+        trialM0{end+1} = M0;
+        trialM1{end+1} = M1;
+        trialM2{end+1} = M2;
+    end
+
+    % Pad with NaNs
+    all_M0 = nan(length(trialM0), maxT);
+    all_M1 = nan(length(trialM1), maxT);
+    all_M2 = nan(length(trialM2), maxT);
+
+    for j = 1:length(trialM0)
+        pad = @(v) [v; nan(maxT - length(v), 1)];
+        all_M0(j, :) = pad(trialM0{j});
+        all_M1(j, :) = pad(trialM1{j});
+        all_M2(j, :) = pad(trialM2{j});
+    end
+
+    t = 1:maxT;
+
+    % Calculate mean and std deviation
+    M0_mean = mean(all_M0, 1, 'omitnan');
+    M1_mean = mean(all_M1, 1, 'omitnan');
+    M2_mean = mean(all_M2, 1, 'omitnan');
+
+    M0_std = std(all_M0, 0, 1, 'omitnan');
+    M1_std = std(all_M1, 0, 1, 'omitnan');
+    M2_std = std(all_M2, 0, 1, 'omitnan');
+
+    % Plot shaded areas (mean ± std)
+    fill([t fliplr(t)], [M0_mean - M0_std fliplr(M0_mean + M0_std)], ...
+        [1 0 0], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+    fill([t fliplr(t)], [M1_mean - M1_std fliplr(M1_mean + M1_std)], ...
+        [0 1 0], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+    fill([t fliplr(t)], [M2_mean - M2_std fliplr(M2_mean + M2_std)], ...
+        [0 0 1], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+
+    % Plot mean lines on top
+    plot(t, M0_mean, 'r', 'LineWidth', 2, 'DisplayName', 'M0 Mean');
+    plot(t, M1_mean, 'g', 'LineWidth', 2, 'DisplayName', 'M1 Mean');
+    plot(t, M2_mean, 'b', 'LineWidth', 2, 'DisplayName', 'M2 Mean');
+
+    title(['Actuation Over Time - ', cleanName], 'FontSize', 16);
+    xlabel('Time Steps', 'FontSize', 14);
+    ylabel('Final Actuation', 'FontSize', 14);
+    legend({'M0 Mean', 'M1 Mean', 'M2 Mean'}, 'Location', 'northeastoutside', 'FontSize', 12);
+    set(gca, 'FontSize', 14);
+    hold off;
+end
+
+
+%% === Plot 12b: Distribution of Equilibrium Durations (all 3 motors = 0) ===
+figure;
+
+disp('Files per strategy being analyzed in Plot 12b:');
+for i = 1:length(files)
+    fprintf('Strategy: %s\n', strategyNames{i});
+    disp(files{i});
+end
+
+for i = 1:length(files)
+    allDurations = [];
+    
+    for j = 1:length(files{i})
+        fileName = files{i}{j};  % store for printing
+        data = readtable(fileName);
+        data.Properties.VariableNames = matlab.lang.makeValidName(strtrim(data.Properties.VariableNames));
+
+        % Confirm needed columns
+        if ~all(ismember({'Sample_Number', 'Motor', 'Final_Actuation'}, data.Properties.VariableNames))
+            warning('Missing required columns in: %s', fileName);
+            continue;
+        end
+
+        % Group by Sample_Number
+        [uniqueSamples, ~, sampleIdx] = unique(data.Sample_Number);
+        isEquilibrium = false(length(uniqueSamples), 1);
+
+        for k = 1:length(uniqueSamples)
+            rows = (sampleIdx == k);
+            group = data(rows, :);
+
+            % Equilibrium if all three actuations are zero
+            if height(group) == 3 && all(group.Final_Actuation == 0)
+                isEquilibrium(k) = true;
+            end
+        end
+
+        % Find durations
+        padded = [0; isEquilibrium; 0];
+        change = diff(padded);
+        starts = find(change == 1);
+        stops = find(change == -1);
+        durations = stops - starts;
+
+        if strcmp(strategyNames{i}, 'GLOBAL_ONLY') && any(durations > 0)
+            fprintf('🔍 File: %s\n', fileName);
+            fprintf('  Detected durations: %s\n', mat2str(durations'));
+        end
+
+        allDurations = [allDurations; durations];
+    end
+
+    subplot(3,2,i);
+    histogram(allDurations, 'BinWidth', 1);
+    title(strrep(['Equilibrium Durations - ', strategyNames{i}], '_', ' '), 'FontSize', 16);
+    xlabel('Duration (timesteps)', 'FontSize', 14);
+    ylabel('Frequency', 'FontSize', 14);
+    set(gca, 'FontSize', 14);
+end
+
+
+
 
